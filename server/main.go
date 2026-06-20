@@ -29,6 +29,9 @@ var authToken = "polyos-secure-token"
 var logClients = make(map[*websocket.Conn]bool)
 var logMutex sync.Mutex
 
+var logHistory []string
+var logHistoryMutex sync.Mutex
+
 type Client struct {
 	ID       string
 	Hostname string
@@ -156,6 +159,8 @@ func handleWS(w http.ResponseWriter, r *http.Request) {
 				mutex.Lock()
 				latestScreens[clientID] = msg.Data
 				mutex.Unlock()
+			} else if msg.Type == "log" {
+				log.Printf("[%s] %s\n", client.Hostname, msg.Data)
 			}
 		}
 	}
@@ -237,7 +242,17 @@ func handleStudentViewerWS(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func addLogToHistory(msg string) {
+	logHistoryMutex.Lock()
+	defer logHistoryMutex.Unlock()
+	logHistory = append(logHistory, msg)
+	if len(logHistory) > 100 {
+		logHistory = logHistory[1:]
+	}
+}
+
 func broadcastLog(message string) {
+	addLogToHistory(message)
 	logMutex.Lock()
 	defer logMutex.Unlock()
 	for client := range logClients {
@@ -264,6 +279,13 @@ func handleLogsWS(w http.ResponseWriter, r *http.Request) {
 	logMutex.Lock()
 	logClients[conn] = true
 	logMutex.Unlock()
+
+	// Geçmiş logları gönder
+	logHistoryMutex.Lock()
+	for _, logLine := range logHistory {
+		_ = conn.WriteMessage(websocket.TextMessage, []byte(logLine))
+	}
+	logHistoryMutex.Unlock()
 
 	log.Println("Öğretmen paneli log izleyici bağlandı.")
 

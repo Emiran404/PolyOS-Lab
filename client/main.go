@@ -34,7 +34,54 @@ var (
 	serverURL       = "ws://localhost:8080/ws"
 	secretToken     = "polyos-secure-token"
 	logFile         *os.File
+	wsConn          *websocket.Conn
+	wsMutex         sync.Mutex
+	isLoggingToWS   bool
+	logLoopMutex    sync.Mutex
 )
+
+type clientLogWriter struct{}
+
+func sendClientLogToServer(msg string) {
+	logLoopMutex.Lock()
+	if isLoggingToWS {
+		logLoopMutex.Unlock()
+		return
+	}
+	isLoggingToWS = true
+	logLoopMutex.Unlock()
+
+	defer func() {
+		logLoopMutex.Lock()
+		isLoggingToWS = false
+		logLoopMutex.Unlock()
+	}()
+
+	wsMutex.Lock()
+	conn := wsConn
+	wsMutex.Unlock()
+
+	if conn != nil {
+		logMsg := map[string]string{
+			"type": "log",
+			"data": msg,
+		}
+		_ = conn.WriteJSON(logMsg)
+	}
+}
+
+func (w *clientLogWriter) Write(p []byte) (n int, err error) {
+	msg := strings.TrimSpace(string(p))
+	
+	if logFile != nil {
+		n, err = logFile.Write(p)
+	} else {
+		n, err = os.Stdout.Write(p)
+	}
+	
+	sendClientLogToServer(msg)
+	return n, err
+}
 
 type ClientConfig struct {
 	ServerURL   string `json:"server_url"`
@@ -117,6 +164,7 @@ func discoverServer() {
 
 func setupLogging() {
 	if runtime.GOOS == "darwin" {
+		log.SetOutput(&clientLogWriter{})
 		return // macOS'ta normal terminal logu
 	}
 	
@@ -133,11 +181,11 @@ func setupLogging() {
 		tempLogPath := filepath.Join(os.TempDir(), "polyos-client.log")
 		logFile, err = os.OpenFile(tempLogPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 		if err == nil {
-			log.SetOutput(logFile)
+			log.SetOutput(&clientLogWriter{})
 			log.Println("Log dosyası geçici klasörde açıldı:", tempLogPath)
 		}
 	} else {
-		log.SetOutput(logFile)
+		log.SetOutput(&clientLogWriter{})
 		log.Println("Sistem log dosyası açıldı:", logFilePath)
 	}
 }
@@ -781,6 +829,10 @@ func main() {
 			continue
 		}
 
+		wsMutex.Lock()
+		wsConn = c
+		wsMutex.Unlock()
+
 		log.Println("Sunucuya başarıyla bağlanıldı!")
 
 		// Sisteme bağlandığını bildiren ilk mesaj (Handshake)
@@ -802,6 +854,11 @@ func main() {
 		go func() {
 			defer func() {
 				c.Close()
+				wsMutex.Lock()
+				if wsConn == c {
+					wsConn = nil
+				}
+				wsMutex.Unlock()
 				close(done)
 			}()
 			for {
@@ -888,9 +945,15 @@ func main() {
 		select {
 		case <-done:
 			log.Println("Bağlantı kesildi, 5 saniye içinde yeniden bağlanılacak...")
+			wsMutex.Lock()
+			wsConn = nil
+			wsMutex.Unlock()
 			time.Sleep(5 * time.Second)
 		case <-interrupt:
 			log.Println("İstemci kapatılıyor...")
+			wsMutex.Lock()
+			wsConn = nil
+			wsMutex.Unlock()
 			_ = c.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
 			c.Close()
 			return
