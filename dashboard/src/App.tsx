@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Users,
   MonitorPlay,
@@ -18,14 +18,18 @@ import {
   Wifi,
   MonitorUp,
   HelpCircle,
-  ChevronLeft,
+  ChevronLeft,  
   Zap,
   Globe,
   MessageSquare,
   Network,
   WifiOff,
   Moon,
-  Terminal
+  Terminal,
+  Heart,
+  Cpu,
+  Thermometer,
+  HardDrive
 } from 'lucide-react';
 import './App.css';
 
@@ -40,6 +44,87 @@ function App() {
   const [logs, setLogs] = useState<string[]>([]);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [refreshTicker, setRefreshTicker] = useState(0);
+
+  // Telemetri ve aşırı ısınma durumları
+  const overheatingClients = clients.filter(client => {
+    const tel = telemetryData[client.id];
+    return tel && tel.cpuUsage >= 95.0 && tel.cpuTemp >= 75.0;
+  });
+
+  const avgCpu = clients.length > 0
+    ? Math.round(clients.reduce((acc, c) => acc + (telemetryData[c.id]?.cpuUsage || 0), 0) / clients.length)
+    : 0;
+
+  // Uzaktan Terminal State'leri
+  const [activeTerminalClients, setActiveTerminalClients] = useState<Client[]>([]);
+  const [terminalInput, setTerminalInput] = useState('');
+  const [terminalLines, setTerminalLines] = useState<string[]>([]);
+  const terminalEndRef = useRef<HTMLDivElement | null>(null);
+
+  // Auto-scroll terminal to bottom
+  useEffect(() => {
+    if (activeTerminalClients.length > 0 && terminalEndRef.current) {
+      terminalEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [terminalLines, activeTerminalClients]);
+  
+  // Telemetri (Sağlık Haritası) State'leri
+  const [telemetryData, setTelemetryData] = useState<Record<string, { cpuUsage: number; cpuTemp: number; ramUsage: number; diskUsage: number }>>({});
+
+  // Telemetri Verilerini Çekme (Her 4 saniyede bir)
+  useEffect(() => {
+    const fetchTelemetry = async () => {
+      try {
+        const response = await fetch('http://localhost:8080/api/telemetry');
+        if (response.ok) {
+          const data = await response.json();
+          setTelemetryData(data || {});
+        }
+      } catch (e) {
+        console.error("Telemetry fetch error:", e);
+      }
+    };
+
+    const interval = setInterval(fetchTelemetry, 4000);
+    fetchTelemetry();
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // Uzaktan Terminal Canlı Çıktı Dinleme
+  useEffect(() => {
+    let ws: WebSocket | null = null;
+    let reconnectTimeout: any = null;
+
+    const connectTerminal = () => {
+      ws = new WebSocket('ws://localhost:8080/ws/terminal');
+      
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          // format: { clientId: "...", hostname: "...", command_id: "...", output: "..." }
+          setTerminalLines(prev => [...prev, `[${data.hostname}] ${data.output}`]);
+        } catch (e) {
+          setTerminalLines(prev => [...prev, event.data]);
+        }
+      };
+
+      ws.onclose = () => {
+        reconnectTimeout = setTimeout(connectTerminal, 3000);
+      };
+
+      ws.onerror = () => {
+        ws?.close();
+      };
+    };
+
+    connectTerminal();
+
+    return () => {
+      if (ws) ws.close();
+      if (reconnectTimeout) clearTimeout(reconnectTimeout);
+    };
+  }, []);
 
   // Canlı Log Kayıtlarını Dinleme
   useEffect(() => {
@@ -493,6 +578,34 @@ function App() {
     }
   };
 
+  const handleTerminalSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!terminalInput.trim() || activeTerminalClients.length === 0) return;
+
+    const command = terminalInput.trim();
+    setTerminalInput('');
+    setTerminalLines(prev => [...prev, `$ ${command}`]);
+
+    const command_id = Math.random().toString(36).substring(7);
+
+    for (const client of activeTerminalClients) {
+      try {
+        await fetch('http://localhost:8080/api/terminal/run', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            clientId: client.id,
+            command,
+            command_id,
+          }),
+        });
+      } catch (err) {
+        console.error("Failed to run terminal command for client:", client.hostname, err);
+        setTerminalLines(prev => [...prev, `[${client.hostname}] Sunucuya erişilemedi.`]);
+      }
+    }
+  };
+
   const sendToAll = (command: string) => {
     clients.forEach(c => sendCommand(c.id, command));
   };
@@ -556,6 +669,7 @@ function App() {
 
   const menuItems = [
     { icon: Activity, label: 'Laboratuvar Özeti', id: 'summary' },
+    { icon: Heart, label: 'Sağlık Haritası', id: 'health_map' },
     { icon: Zap, label: 'Hızlı İşlemler', id: 'quick_actions' },
     { icon: Network, label: 'Ağ Yönetimi', id: 'network_management' },
     { icon: Monitor, label: 'İstemci Listesi', id: 'clients' },
@@ -663,19 +777,19 @@ function App() {
                 <div className="stat-label">Aktif Bağlantı</div>
                 <div className="stat-detail">Şu an çevrimiçi</div>
               </div>
-              <div className="stat-card">
+              <div className="stat-card" style={{ cursor: 'pointer' }} onClick={() => setActiveTab('health_map')}>
                 <div className="stat-icon-wrapper bg-yellow">
                   <AlertCircle size={24} color="#f59e0b" />
                 </div>
-                <div className="stat-value">0</div>
+                <div className="stat-value">{overheatingClients.length}</div>
                 <div className="stat-label">Uyarı / Hata</div>
-                <div className="stat-detail">Son 24 saat</div>
+                <div className="stat-detail">Aşırı Isınan Cihazlar</div>
               </div>
-              <div className="stat-card">
+              <div className="stat-card" style={{ cursor: 'pointer' }} onClick={() => setActiveTab('health_map')}>
                 <div className="stat-icon-wrapper bg-purple">
                   <MonitorUp size={24} color="#8b5cf6" />
                 </div>
-                <div className="stat-value">%100</div>
+                <div className="stat-value">%{avgCpu}</div>
                 <div className="stat-label">Sistem Yükü</div>
                 <div className="stat-detail">Ortalama</div>
               </div>
@@ -746,6 +860,12 @@ function App() {
                         </div>
 
                         <div className="client-actions">
+                          <button className="action-btn" onClick={() => {
+                            setActiveTerminalClients([client]);
+                            setTerminalLines([]);
+                          }} title="Terminal Aç">
+                            <Terminal size={16} color="#0d9488" />
+                          </button>
                           <button className="action-btn" onClick={() => sendCommand(client.id, 'lock')} title="Kilitle">
                             <Lock size={16} color="#475569" />
                           </button>
@@ -933,6 +1053,32 @@ function App() {
                   title="Öğrencilere Mesaj Gönder"
                 >
                   <MessageSquare size={16} /> Mesaj Gönder
+                </button>
+                <button 
+                  onClick={() => {
+                    if (selectedClientIds.length === 0) {
+                      alert("Lütfen en az bir istemci seçin.");
+                      return;
+                    }
+                    const selectedClients = clients.filter(c => selectedClientIds.includes(c.id));
+                    setActiveTerminalClients(selectedClients);
+                    setTerminalLines([]);
+                  }}
+                  disabled={selectedClientIds.length === 0}
+                  className="btn-primary"
+                  style={{ 
+                    fontSize: '13px', 
+                    padding: '8px 12px', 
+                    backgroundColor: '#1e293b',
+                    opacity: selectedClientIds.length === 0 ? 0.5 : 1,
+                    cursor: selectedClientIds.length === 0 ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                  title="Seçili Cihazlarda Uzaktan Terminal Aç"
+                >
+                  <Terminal size={16} /> Terminal Aç
                 </button>
                 
                 <div style={{ width: '1px', height: '24px', backgroundColor: 'var(--color-border)', margin: '0 8px' }} />
@@ -1388,6 +1534,12 @@ function App() {
                         </td>
                         <td style={{ padding: '16px 12px', textAlign: 'right' }}>
                           <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                            <button className="action-btn" onClick={() => {
+                              setActiveTerminalClients([client]);
+                              setTerminalLines([]);
+                            }} title="Terminal Aç">
+                              <Terminal size={16} color="#0d9488" />
+                            </button>
                             <button className="action-btn" onClick={() => sendCommand(client.id, 'lock')} title="Kilitle">
                               <Lock size={16} color="#475569" />
                             </button>
@@ -1467,6 +1619,12 @@ function App() {
                       </div>
                     </div>
                     <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                      <button className="action-btn" onClick={() => {
+                        setActiveTerminalClients([client]);
+                        setTerminalLines([]);
+                      }} title="Terminal Aç">
+                        <Terminal size={16} color="#0d9488" />
+                      </button>
                       <button className="action-btn" onClick={() => sendCommand(client.id, 'lock')} title="Kilitle">
                         <Lock size={16} color="#475569" />
                       </button>
@@ -1705,6 +1863,211 @@ function App() {
             </div>
           </div>
         );
+      case 'health_map':
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            <div className="page-header" style={{ marginBottom: 0 }}>
+              <div>
+                <h1 className="greeting">Donanım ve Ağ Sağlığı Haritası</h1>
+                <p className="sub-greeting">Laboratuvardaki cihazların donanım yüklerini ve sıcaklık durumlarını anlık takip edin</p>
+              </div>
+            </div>
+
+            {/* Health Summary Stats */}
+            <div className="stats-grid">
+              <div className="stat-card">
+                <div className="stat-icon-wrapper bg-blue">
+                  <Cpu size={24} color="#3b82f6" />
+                </div>
+                <div className="stat-value">%
+                  {clients.length > 0
+                    ? Math.round(clients.reduce((acc, c) => acc + (telemetryData[c.id]?.cpuUsage || 0), 0) / clients.length)
+                    : 0}
+                </div>
+                <div className="stat-label">Ortalama CPU Yükü</div>
+                <div className="stat-detail">Bağlı tüm istemciler</div>
+              </div>
+              <div className="stat-card">
+                <div className="stat-icon-wrapper bg-yellow">
+                  <Thermometer size={24} color="#f59e0b" />
+                </div>
+                <div className="stat-value">
+                  {clients.length > 0
+                    ? (clients.reduce((acc, c) => acc + (telemetryData[c.id]?.cpuTemp || 0), 0) / clients.length).toFixed(1)
+                    : "0.0"}°C
+                </div>
+                <div className="stat-label">Ortalama Sıcaklık</div>
+                <div className="stat-detail">İşlemci sıcaklığı</div>
+              </div>
+              <div className="stat-card">
+                <div className="stat-icon-wrapper bg-green">
+                  <CheckCircle size={24} color="#10b981" />
+                </div>
+                <div className="stat-value">%
+                  {clients.length > 0
+                    ? Math.round(clients.reduce((acc, c) => acc + (telemetryData[c.id]?.ramUsage || 0), 0) / clients.length)
+                    : 0}
+                </div>
+                <div className="stat-label">Ortalama Bellek Yükü</div>
+                <div className="stat-detail">RAM kullanımı</div>
+              </div>
+              <div className="stat-card">
+                <div className="stat-icon-wrapper bg-purple">
+                  <HardDrive size={24} color="#8b5cf6" />
+                </div>
+                <div className="stat-value">%
+                  {clients.length > 0
+                    ? Math.round(clients.reduce((acc, c) => acc + (telemetryData[c.id]?.diskUsage || 0), 0) / clients.length)
+                    : 0}
+                </div>
+                <div className="stat-label">Ortalama Disk Doluluğu</div>
+                <div className="stat-detail">Depolama alanı</div>
+              </div>
+            </div>
+
+            <div className="card">
+              <div className="card-header">
+                <h2 className="card-title">Cihaz Donanım Durumları</h2>
+              </div>
+              <div style={{ marginTop: '20px' }}>
+                {clients.length === 0 ? (
+                  <div className="empty-state">
+                    <Monitor size={48} className="empty-icon" />
+                    <p>Bağlı istemci bulunmuyor.</p>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    {clients.map(client => {
+                      const tel = telemetryData[client.id] || { cpuUsage: 0, cpuTemp: 45, ramUsage: 0, diskUsage: 0 };
+                      const isOverheating = tel.cpuUsage >= 95.0 && tel.cpuTemp >= 75.0;
+                      
+                      const getProgressColor = (val: number) => {
+                        if (val >= 90) return '#dc2626'; // Red
+                        if (val >= 70) return '#f59e0b'; // Orange/Yellow
+                        return '#10b981'; // Green
+                      };
+
+                      return (
+                        <div 
+                          key={client.id} 
+                          style={{ 
+                            padding: '20px', 
+                            borderRadius: '12px', 
+                            border: isOverheating ? '2px solid #dc2626' : '1px solid var(--color-border)', 
+                            backgroundColor: isOverheating ? '#fef2f2' : '#fff',
+                            boxShadow: isOverheating ? '0 4px 15px rgba(220, 38, 38, 0.1)' : 'none',
+                            display: 'flex', 
+                            flexDirection: 'column', 
+                            gap: '16px',
+                            transition: 'all 0.2s'
+                          }}
+                        >
+                          {/* Card Top: Client Info and Quick Actions */}
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div>
+                              <strong style={{ fontSize: '15px', color: '#0f172a' }}>{client.hostname}</strong>
+                              <span style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginLeft: '10px' }}>({client.id})</span>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                              {isOverheating && (
+                                <span style={{
+                                  backgroundColor: '#fee2e2',
+                                  color: '#dc2626',
+                                  padding: '4px 10px',
+                                  borderRadius: '20px',
+                                  fontSize: '11px',
+                                  fontWeight: 700,
+                                  animation: 'pulse 1.5s infinite',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '4px'
+                                }}>
+                                  <AlertCircle size={14} /> Aşırı Isınıyor!
+                                </span>
+                              )}
+                              <button 
+                                className="btn-primary" 
+                                onClick={() => {
+                                  setActiveTerminalClients([client]);
+                                  setTerminalLines([]);
+                                }}
+                                style={{ 
+                                  padding: '6px 12px', 
+                                  fontSize: '12px', 
+                                  backgroundColor: isOverheating ? '#dc2626' : '#1e293b',
+                                  boxShadow: 'none'
+                                }}
+                              >
+                                <Terminal size={14} /> Terminal Aç
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Card Grid: Hardware gauges */}
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px' }}>
+                            {/* CPU */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: 600 }}>
+                                <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--color-text-secondary)' }}>
+                                  <Cpu size={14} /> İşlemci (CPU)
+                                </span>
+                                <span style={{ color: getProgressColor(tel.cpuUsage) }}>%{tel.cpuUsage.toFixed(1)}</span>
+                              </div>
+                              <div style={{ height: '8px', backgroundColor: '#e2e8f0', borderRadius: '4px', overflow: 'hidden' }}>
+                                <div style={{ height: '100%', width: `${tel.cpuUsage}%`, backgroundColor: getProgressColor(tel.cpuUsage), borderRadius: '4px', transition: 'width 0.5s ease-in-out' }} />
+                              </div>
+                            </div>
+
+                            {/* CPUTemp */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: 600 }}>
+                                <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--color-text-secondary)' }}>
+                                  <Thermometer size={14} /> Sıcaklık
+                                </span>
+                                <span style={{ color: tel.cpuTemp >= 75 ? '#dc2626' : tel.cpuTemp >= 60 ? '#f59e0b' : '#10b981' }}>
+                                  {tel.cpuTemp.toFixed(1)}°C
+                                </span>
+                              </div>
+                              <div style={{ height: '8px', backgroundColor: '#e2e8f0', borderRadius: '4px', overflow: 'hidden' }}>
+                                <div style={{ height: '100%', width: `${Math.min(100, (tel.cpuTemp / 100) * 100)}%`, backgroundColor: tel.cpuTemp >= 75 ? '#dc2626' : tel.cpuTemp >= 60 ? '#f59e0b' : '#10b981', borderRadius: '4px', transition: 'width 0.5s ease-in-out' }} />
+                              </div>
+                            </div>
+
+                            {/* RAM */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: 600 }}>
+                                <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--color-text-secondary)' }}>
+                                  <CheckCircle size={14} /> Bellek (RAM)
+                                </span>
+                                <span style={{ color: getProgressColor(tel.ramUsage) }}>%{tel.ramUsage.toFixed(1)}</span>
+                              </div>
+                              <div style={{ height: '8px', backgroundColor: '#e2e8f0', borderRadius: '4px', overflow: 'hidden' }}>
+                                <div style={{ height: '100%', width: `${tel.ramUsage}%`, backgroundColor: getProgressColor(tel.ramUsage), borderRadius: '4px', transition: 'width 0.5s ease-in-out' }} />
+                              </div>
+                            </div>
+
+                            {/* Disk */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: 600 }}>
+                                <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--color-text-secondary)' }}>
+                                  <HardDrive size={14} /> Disk Doluluğu
+                                </span>
+                                <span style={{ color: getProgressColor(tel.diskUsage) }}>%{tel.diskUsage.toFixed(1)}</span>
+                              </div>
+                              <div style={{ height: '8px', backgroundColor: '#e2e8f0', borderRadius: '4px', overflow: 'hidden' }}>
+                                <div style={{ height: '100%', width: `${tel.diskUsage}%`, backgroundColor: getProgressColor(tel.diskUsage), borderRadius: '4px', transition: 'width 0.5s ease-in-out' }} />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        );
       case 'logs':
         return (
           <div className="card">
@@ -1807,6 +2170,61 @@ function App() {
       {/* Main Content */}
       <main className={`main-content ${sidebarOpen ? 'sidebar-open' : 'sidebar-closed'}`}>
         <div className="dashboard-container">
+          {/* Overheating Critical Alerts */}
+          {overheatingClients.map(client => (
+            <div key={client.id} className="overheat-alert-banner" style={{
+              background: 'linear-gradient(135deg, #fee2e2 0%, #fef2f2 100%)',
+              border: '1px solid #fca5a5',
+              borderRadius: '12px',
+              padding: '16px',
+              marginBottom: '20px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              boxShadow: '0 4px 15px rgba(220, 38, 38, 0.1)',
+              animation: 'pulse 2s infinite'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '50%',
+                  backgroundColor: '#fca5a5',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#dc2626'
+                }}>
+                  <AlertCircle size={20} />
+                </div>
+                <div>
+                  <strong style={{ color: '#991b1b', fontSize: '14px', display: 'block' }}>
+                    ⚠️ Kritik Durum: {client.hostname} Aşırı Isınıyor!
+                  </strong>
+                  <span style={{ color: '#7f1d1d', fontSize: '12px' }}>
+                    Cihaz işlemcisi tam yük altında (%{telemetryData[client.id]?.cpuUsage.toFixed(1)}) ve sıcaklığı tehlikeli seviyede ({telemetryData[client.id]?.cpuTemp.toFixed(1)}°C).
+                  </span>
+                </div>
+              </div>
+              <button 
+                className="btn-primary" 
+                onClick={() => {
+                  setActiveTerminalClients([client]);
+                  setTerminalLines([]);
+                }}
+                style={{
+                  backgroundColor: '#dc2626',
+                  fontSize: '12px',
+                  padding: '8px 12px',
+                  borderRadius: '8px',
+                  boxShadow: 'none'
+                }}
+              >
+                Terminal Aç (Sorunu Çöz)
+              </button>
+            </div>
+          ))}
+
           {renderContent()}
         </div>
       </main>
@@ -2078,6 +2496,180 @@ function App() {
                 Gönder
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Uzaktan Root Terminali Modal */}
+      {activeTerminalClients.length > 0 && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100vw',
+          height: '100vh',
+          backgroundColor: 'rgba(15, 23, 42, 0.75)',
+          backdropFilter: 'blur(12px)',
+          zIndex: 99999,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '20px',
+          boxSizing: 'border-box'
+        }}>
+          <div style={{
+            width: '100%',
+            maxWidth: '900px',
+            height: '80vh',
+            backgroundColor: '#0b0f19',
+            borderRadius: '16px',
+            border: '1px solid #1e293b',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 20px rgba(13, 148, 136, 0.1)',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden'
+          }}>
+            {/* Modal Header */}
+            <div style={{
+              padding: '16px 24px',
+              backgroundColor: '#0f172a',
+              borderBottom: '1px solid #1e293b',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              color: '#f8fafc'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{
+                  width: '10px',
+                  height: '10px',
+                  borderRadius: '50%',
+                  backgroundColor: '#10b981',
+                  boxShadow: '0 0 8px #10b981'
+                }} />
+                <div>
+                  <span style={{ fontWeight: 700, fontSize: '15px', fontFamily: 'monospace' }}>Uzaktan Root Terminali</span>
+                  <span style={{ fontSize: '12px', color: '#94a3b8', marginLeft: '12px', fontFamily: 'monospace' }}>
+                    ({activeTerminalClients.length} Cihaz Seçili: {activeTerminalClients.map(c => c.hostname).join(', ')})
+                  </span>
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <button 
+                  onClick={() => setTerminalLines([])}
+                  style={{
+                    backgroundColor: 'rgba(255,255,255,0.05)',
+                    color: '#94a3b8',
+                    border: 'none',
+                    padding: '6px 12px',
+                    borderRadius: '6px',
+                    fontFamily: 'monospace',
+                    fontSize: '12px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)'}
+                  onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.05)'}
+                >
+                  Ekranı Temizle
+                </button>
+                <button 
+                  onClick={() => setActiveTerminalClients([])}
+                  style={{
+                    backgroundColor: '#dc2626',
+                    color: '#fff',
+                    border: 'none',
+                    padding: '6px 16px',
+                    borderRadius: '6px',
+                    fontFamily: 'monospace',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#b91c1c'}
+                  onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#dc2626'}
+                >
+                  Kapat
+                </button>
+              </div>
+            </div>
+
+            {/* Terminal Lines Container */}
+            <div style={{
+              flex: 1,
+              padding: '20px',
+              overflowY: 'auto',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '8px',
+              fontFamily: 'Consolas, "Fira Code", Monaco, monospace',
+              fontSize: '14px',
+              color: '#38bdf8',
+              lineHeight: '1.5'
+            }}>
+              <div style={{ color: '#64748b', fontSize: '12px', borderBottom: '1px dashed #1e293b', paddingBottom: '8px', marginBottom: '8px' }}>
+                * Bilişim Teknolojileri Öğretmen Paneli Uzaktan Yönetim Terminali.<br/>
+                * Girilen komutlar hedef bilgisayarlarda root yetkisiyle doğrudan çalıştırılır. Lütfen dikkatli olun.
+              </div>
+              {terminalLines.length === 0 ? (
+                <div style={{ color: '#475569', fontStyle: 'italic' }}>Komut çıktısı bekleniyor...</div>
+              ) : (
+                terminalLines.map((line, index) => {
+                  let color = '#38bdf8'; // Default cyan
+                  if (line.startsWith('$ ')) {
+                    color = '#f1f5f9'; // User input command: white
+                  } else if (line.includes('error') || line.includes('Hata') || line.includes('failed') || line.includes('Erişilemedi')) {
+                    color = '#f87171'; // Error: red
+                  } else if (line.includes('[') && line.includes(']')) {
+                    color = '#4ade80'; // Success output: green
+                  }
+                  return (
+                    <div key={index} style={{ color, whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
+                      {line}
+                    </div>
+                  );
+                })
+              )}
+              <div ref={terminalEndRef} />
+            </div>
+
+            {/* Terminal Input Form */}
+            <form onSubmit={handleTerminalSubmit} style={{
+              padding: '16px 24px',
+              backgroundColor: '#0f172a',
+              borderTop: '1px solid #1e293b',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px'
+            }}>
+              <span style={{
+                fontFamily: 'Consolas, "Fira Code", Monaco, monospace',
+                color: '#10b981',
+                fontWeight: 700,
+                fontSize: '14px',
+                whiteSpace: 'nowrap'
+              }}>
+                root@polyos-lab:~#
+              </span>
+              <input 
+                type="text"
+                placeholder="Komut girin (örn: systemctl restart lightdm, reboot, apt update)..."
+                value={terminalInput}
+                onChange={(e) => setTerminalInput(e.target.value)}
+                style={{
+                  flex: 1,
+                  backgroundColor: 'transparent',
+                  border: 'none',
+                  outline: 'none',
+                  color: '#f8fafc',
+                  fontFamily: 'Consolas, "Fira Code", Monaco, monospace',
+                  fontSize: '14px',
+                  caretColor: '#10b981'
+                }}
+                autoFocus
+              />
+            </form>
           </div>
         </div>
       )}
