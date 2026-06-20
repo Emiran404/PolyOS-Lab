@@ -1,7 +1,13 @@
 {
   "name": "dashboard",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
+  "description": "PolyOS Lab Teacher Dashboard",
+  "author": "Emirhan Gok",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Emiran404/PolyOS-Lab.git"
+  },
   "type": "module",
   "main": "main.cjs",
   "scripts": {
@@ -11,7 +17,7 @@
     "preview": "vite preview",
     "electron:start": "electron .",
     "electron:dev": "concurrently \"npm run dev\" \"wait-on http://localhost:5173 && npm run electron:start\"",
-    "electron:build": "npm run build && electron-builder"
+    "electron:build": "npm run build && electron-builder --publish never"
   },
   "build": {
     "appId": "com.polyos.lab.dashboard",
