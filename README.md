@@ -4,12 +4,16 @@
 
 <h1 align="center">🎓 PolyOS Lab</h1>
 
+> [!NOTE]
+> PolyOS Lab bir PolyOS ürünüdür — Pardus Okul Laboratuvar Yönetim ve Ödev Sistemi
+
+
 <p align="center">
   <strong>Eğitim kurumları ve bilgisayar laboratuvarları için modern, güvenli ve anlık yönetim ekosistemi.</strong>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/VERSIYON-1.0.0-blue?style=for-the-badge" alt="Versiyon">
+  <img src="https://img.shields.io/badge/VERSIYON-1.0.5-blue?style=for-the-badge" alt="Versiyon">
   <img src="https://img.shields.io/badge/LISANS-MIT-green?style=for-the-badge" alt="Lisans">
   <img src="https://img.shields.io/badge/PLATFORM-PARDUS%20%7C%20MACOS-red?style=for-the-badge" alt="Platform">
 </p>
@@ -47,6 +51,18 @@
 **PolyOS Lab**, okul laboratuvarlarında öğretmenlerin öğrenci bilgisayarlarını canlı olarak izlemesini, kontrol etmesini ve yönetmesini sağlayan modern, yüksek performanslı ve hafif bir laboratuvar yönetim ekosistemidir. 
 
 Geleneksel ağır ve hantal yönetim araçlarının aksine, Go dilinin sunduğu yerel hız ve eşzamanlılık (concurrency) avantajları ile React/Vite/Electron üçlüsünün esnek arayüz dinamiklerini birleştirir. Özellikle **Pardus (Linux)** işletim sistemine tam uyum sağlamakla birlikte **macOS** üzerinde de simülasyon/geliştirme desteği sunar.
+
+---
+
+## ❓ Neden PolyOS Lab?
+
+PolyOS Lab, okul bilişim laboratuvarlarının ve eğitim ortamlarının yönetimini kolaylaştırmak için tasarlanmış, yerli ve milli bir ekosistemdir. 
+
+* **Pardus Uyumluluğu:** Pardus ve diğer Debian tabanlı sistemler için sıfır yapılandırmayla tam uyumlu çalışır.
+* **Go Gücü ile Yüksek Performans:** Çok düşük kaynak kullanımı sayesinde eski bilgisayarlarda bile donma ve kasma yapmadan arka planda sessizce çalışır.
+* **Modern Teknolojiler:** React, TypeScript ve Electron ile modern, sezgisel ve kullanımı son derece kolay bir öğretmen arayüzü sunar.
+* **Bütüncül Çözüm:** Sadece ekran izleme değil; dosya gönderme, internet/USB kısıtlama, uzaktan güç yönetimi (WOL) ve kilit ekranı gibi sınıfta ihtiyaç duyulan tüm araçları tek bir çatı altında birleştirir.
+
 
 ---
 
