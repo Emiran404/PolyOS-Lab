@@ -404,14 +404,19 @@ func handleTerminalRun(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	log.Printf("[Terminal] İstek alındı - ClientID: %s, Command: %s\n", req.ClientID, req.Command)
+
 	mutex.Lock()
 	client, exists := clients[req.ClientID]
 	mutex.Unlock()
 
 	if !exists {
+		log.Printf("[Terminal] İstemci bulunamadı: %s\n", req.ClientID)
 		http.Error(w, "İstemci bulunamadı", http.StatusNotFound)
 		return
 	}
+
+	log.Printf("[Terminal] İstemciye komut gönderiliyor: %s (%s)\n", client.Hostname, client.ID)
 
 	cmdMsg := map[string]string{
 		"action":     "run_terminal",
@@ -420,10 +425,12 @@ func handleTerminalRun(w http.ResponseWriter, r *http.Request) {
 	}
 	err = client.Conn.WriteJSON(cmdMsg)
 	if err != nil {
+		log.Printf("[Terminal] Hata: Komut gönderilemedi: %v\n", err)
 		http.Error(w, "Komut gönderilemedi", http.StatusInternalServerError)
 		return
 	}
 
+	log.Println("[Terminal] Komut başarıyla gönderildi.")
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(`{"status":"sent"}`))
 }

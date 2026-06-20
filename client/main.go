@@ -1120,6 +1120,7 @@ func main() {
 }
 
 func executeTerminalCommand(cmdStr, cmdID string) {
+	log.Printf("[Terminal] Komut çalıştırılıyor: %s\n", cmdStr)
 	var cmd *exec.Cmd
 	if runtime.GOOS == "windows" {
 		cmd = exec.Command("cmd", "/c", cmdStr)
@@ -1133,6 +1134,8 @@ func executeTerminalCommand(cmdStr, cmdID string) {
 		outputStr = "Hata: " + err.Error()
 	}
 
+	log.Printf("[Terminal] Çıktı uzunluğu: %d\n", len(outputStr))
+
 	wsMutex.Lock()
 	conn := wsConn
 	wsMutex.Unlock()
@@ -1145,7 +1148,14 @@ func executeTerminalCommand(cmdStr, cmdID string) {
 				"output":     outputStr,
 			},
 		}
-		_ = conn.WriteJSON(payload)
+		err = conn.WriteJSON(payload)
+		if err != nil {
+			log.Printf("[Terminal] WebSocket gönderme hatası: %v\n", err)
+		} else {
+			log.Println("[Terminal] Çıktı sunucuya gönderildi.")
+		}
+	} else {
+		log.Println("[Terminal] Hata: WebSocket bağlantısı bulunamadı.")
 	}
 }
 
