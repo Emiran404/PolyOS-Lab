@@ -45,16 +45,6 @@ function App() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [refreshTicker, setRefreshTicker] = useState(0);
 
-  // Telemetri ve aşırı ısınma durumları
-  const overheatingClients = clients.filter(client => {
-    const tel = telemetryData[client.id];
-    return tel && tel.cpuUsage >= 95.0 && tel.cpuTemp >= 75.0;
-  });
-
-  const avgCpu = clients.length > 0
-    ? Math.round(clients.reduce((acc, c) => acc + (telemetryData[c.id]?.cpuUsage || 0), 0) / clients.length)
-    : 0;
-
   // Uzaktan Terminal State'leri
   const [activeTerminalClients, setActiveTerminalClients] = useState<Client[]>([]);
   const [terminalInput, setTerminalInput] = useState('');
@@ -70,6 +60,16 @@ function App() {
   
   // Telemetri (Sağlık Haritası) State'leri
   const [telemetryData, setTelemetryData] = useState<Record<string, { cpuUsage: number; cpuTemp: number; ramUsage: number; diskUsage: number }>>({});
+
+  // Telemetri ve aşırı ısınma durumları
+  const overheatingClients = clients.filter(client => {
+    const tel = telemetryData[client.id];
+    return tel && tel.cpuUsage >= 95.0 && tel.cpuTemp >= 75.0;
+  });
+
+  const avgCpu = clients.length > 0
+    ? Math.round(clients.reduce((acc, c) => acc + (telemetryData[c.id]?.cpuUsage || 0), 0) / clients.length)
+    : 0;
 
   // Telemetri Verilerini Çekme (Her 4 saniyede bir)
   useEffect(() => {
