@@ -1,0 +1,50 @@
+# Logs and databases
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Node dependencies
+node_modules/
+dist/
+dist-ssr/
+out/
+
+# Go binaries and files
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+client/client
+client/client.exe
+server/server_bin
+server/server
+server/server.exe
+
+# Dynamic App Data (User Data)
+server/devices.json
+server/uploads/
+client/polyos_lock.py
+client/polyos_share_viewer.py
+client/polyos_screen.jpg
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDEs and Editors
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
