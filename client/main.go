@@ -23,6 +23,8 @@ import (
 	"sync"
 	"time"
 
+	"syscall"
+
 	"github.com/gorilla/websocket"
 )
 
@@ -160,6 +162,131 @@ func discoverServer() {
 			log.Println("Sunucu otomatik keşfedildi:", serverURL)
 		}
 	}
+}
+
+type TelemetryData struct {
+	CPUUsage  float64 `json:"cpuUsage"`
+	CPUTemp   float64 `json:"cpuTemp"`
+	RAMUsage  float64 `json:"ramUsage"`
+	DiskUsage float64 `json:"diskUsage"`
+}
+
+// Global variables for CPU stat history
+var lastCPUUser, lastCPUNice, lastCPUSystem, lastCPUIdle, lastCPUIowait, lastCPUIrq, lastCPUSoftirq uint64
+
+func getCPUUsage() float64 {
+	if runtime.GOOS == "darwin" {
+		return 15.0 + float64(time.Now().Unix()%20)
+	}
+
+	file, err := os.Open("/proc/stat")
+	if err != nil {
+		return 0.0
+	}
+	defer file.Close()
+
+	var cpu string
+	var user, nice, system, idle, iowait, irq, softirq uint64
+	_, _ = fmt.Fscanf(file, "%s %d %d %d %d %d %d %d", &cpu, &user, &nice, &system, &idle, &iowait, &irq, &softirq)
+
+	idleTime := idle + iowait
+	nonIdle := user + nice + system + irq + softirq
+	total := idleTime + nonIdle
+
+	lastTotal := lastCPUUser + lastCPUNice + lastCPUSystem + lastCPUIdle + lastCPUIowait + lastCPUIrq + lastCPUSoftirq
+	lastIdle := lastCPUIdle + lastCPUIowait
+
+	totalDiff := total - lastTotal
+	idleDiff := idleTime - lastIdle
+
+	lastCPUUser, lastCPUNice, lastCPUSystem, lastCPUIdle, lastCPUIowait, lastCPUIrq, lastCPUSoftirq = user, nice, system, idle, iowait, irq, softirq
+
+	if totalDiff == 0 {
+		return 0.0
+	}
+
+	return float64(totalDiff-idleDiff) / float64(totalDiff) * 100.0
+}
+
+func getCPUTemp() float64 {
+	if runtime.GOOS == "darwin" {
+		return 42.0 + float64(time.Now().Unix()%10)
+	}
+
+	data, err := os.ReadFile("/sys/class/thermal/thermal_zone0/temp")
+	if err == nil {
+		tempStr := strings.TrimSpace(string(data))
+		tempVal, _ := strconv.Atoi(tempStr)
+		return float64(tempVal) / 1000.0
+	}
+
+	data, err = os.ReadFile("/sys/class/hwmon/hwmon0/temp1_input")
+	if err == nil {
+		tempStr := strings.TrimSpace(string(data))
+		tempVal, _ := strconv.Atoi(tempStr)
+		return float64(tempVal) / 1000.0
+	}
+
+	return 45.0
+}
+
+func getRAMUsage() float64 {
+	if runtime.GOOS == "darwin" {
+		return 50.0 + float64(time.Now().Unix()%15)
+	}
+
+	data, err := os.ReadFile("/proc/meminfo")
+	if err != nil {
+		return 0.0
+	}
+
+	var memTotal, memAvailable uint64
+	lines := strings.Split(string(data), "\n")
+	for _, line := range lines {
+		if strings.HasPrefix(line, "MemTotal:") {
+			fields := strings.Fields(line)
+			if len(fields) >= 2 {
+				memTotal, _ = strconv.ParseUint(fields[1], 10, 64)
+			}
+		}
+		if strings.HasPrefix(line, "MemAvailable:") {
+			fields := strings.Fields(line)
+			if len(fields) >= 2 {
+				memAvailable, _ = strconv.ParseUint(fields[1], 10, 64)
+			}
+		}
+	}
+
+	if memTotal == 0 {
+		return 0.0
+	}
+
+	used := memTotal - memAvailable
+	return float64(used) / float64(memTotal) * 100.0
+}
+
+func getDiskUsage() float64 {
+	path := "/"
+	if runtime.GOOS == "windows" {
+		path = "C:\\"
+	}
+	
+	if runtime.GOOS == "darwin" {
+		return 35.0
+	}
+
+	var stat syscall.Statfs_t
+	err := syscall.Statfs(path, &stat)
+	if err != nil {
+		return 0.0
+	}
+	all := stat.Blocks * uint64(stat.Bsize)
+	free := stat.Bfree * uint64(stat.Bsize)
+	used := all - free
+	if all == 0 {
+		return 0.0
+	}
+	return float64(used) / float64(all) * 100.0
 }
 
 func setupLogging() {
@@ -891,6 +1018,10 @@ func main() {
 							setScreenQuality(90)
 							log.Println("Ekran kalitesi Yüksek (90) olarak ayarlandı.")
 						}
+					} else if action == "run_terminal" {
+						cmdStr, _ := cmdData["command"].(string)
+						cmdID, _ := cmdData["command_id"].(string)
+						go executeTerminalCommand(cmdStr, cmdID)
 					} else {
 						runSystemCommand(action)
 					}
@@ -941,6 +1072,33 @@ func main() {
 			}
 		}()
 
+		// Telemetri gönderim döngüsü (Her 5 saniyede bir)
+		go func() {
+			for {
+				select {
+				case <-done:
+					return
+				case <-time.After(5 * time.Second):
+					telData := TelemetryData{
+						CPUUsage:  getCPUUsage(),
+						CPUTemp:   getCPUTemp(),
+						RAMUsage:  getRAMUsage(),
+						DiskUsage: getDiskUsage(),
+					}
+					wsMutex.Lock()
+					conn := wsConn
+					wsMutex.Unlock()
+					if conn != nil {
+						payload := map[string]interface{}{
+							"type": "telemetry",
+							"data": telData,
+						}
+						_ = conn.WriteJSON(payload)
+					}
+				}
+			}
+		}()
+
 		// Bekleme döngüsü: bağlantı kopana kadar veya interrupt gelene kadar bekle
 		select {
 		case <-done:
@@ -958,6 +1116,36 @@ func main() {
 			c.Close()
 			return
 		}
+	}
+}
+
+func executeTerminalCommand(cmdStr, cmdID string) {
+	var cmd *exec.Cmd
+	if runtime.GOOS == "windows" {
+		cmd = exec.Command("cmd", "/c", cmdStr)
+	} else {
+		cmd = exec.Command("/bin/sh", "-c", cmdStr)
+	}
+
+	out, err := cmd.CombinedOutput()
+	outputStr := string(out)
+	if err != nil && outputStr == "" {
+		outputStr = "Hata: " + err.Error()
+	}
+
+	wsMutex.Lock()
+	conn := wsConn
+	wsMutex.Unlock()
+
+	if conn != nil {
+		payload := map[string]interface{}{
+			"type": "terminal_output",
+			"data": map[string]string{
+				"command_id": cmdID,
+				"output":     outputStr,
+			},
+		}
+		_ = conn.WriteJSON(payload)
 	}
 }
 

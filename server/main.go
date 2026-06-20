@@ -32,6 +32,19 @@ var logMutex sync.Mutex
 var logHistory []string
 var logHistoryMutex sync.Mutex
 
+type TelemetryData struct {
+	CPUUsage  float64 `json:"cpuUsage"`
+	CPUTemp   float64 `json:"cpuTemp"`
+	RAMUsage  float64 `json:"ramUsage"`
+	DiskUsage float64 `json:"diskUsage"`
+}
+
+var clientTelemetry = make(map[string]TelemetryData)
+var telemetryMutex sync.Mutex
+
+var terminalClients = make(map[*websocket.Conn]bool)
+var terminalMutex sync.Mutex
+
 type Client struct {
 	ID       string
 	Hostname string
@@ -128,6 +141,9 @@ func handleWS(w http.ResponseWriter, r *http.Request) {
 			oldClient.Conn.Close()
 			delete(clients, oldID)
 			delete(latestScreens, oldID)
+			telemetryMutex.Lock()
+			delete(clientTelemetry, oldID)
+			telemetryMutex.Unlock()
 		}
 	}
 	clients[clientID] = client
@@ -146,21 +162,56 @@ func handleWS(w http.ResponseWriter, r *http.Request) {
 			delete(clients, clientID)
 			delete(latestScreens, clientID)
 			mutex.Unlock()
+			
+			telemetryMutex.Lock()
+			delete(clientTelemetry, clientID)
+			telemetryMutex.Unlock()
 			return
 		}
 		_ = messageType
 
 		var msg struct {
-			Type string `json:"type"`
-			Data string `json:"data"`
+			Type string          `json:"type"`
+			Data json.RawMessage `json:"data"`
 		}
 		if err := json.Unmarshal(p, &msg); err == nil {
 			if msg.Type == "screen" {
-				mutex.Lock()
-				latestScreens[clientID] = msg.Data
-				mutex.Unlock()
+				var screenData string
+				if err := json.Unmarshal(msg.Data, &screenData); err == nil {
+					mutex.Lock()
+					latestScreens[clientID] = screenData
+					mutex.Unlock()
+				}
 			} else if msg.Type == "log" {
-				log.Printf("[%s] %s\n", client.Hostname, msg.Data)
+				var logData string
+				if err := json.Unmarshal(msg.Data, &logData); err == nil {
+					log.Printf("[%s] %s\n", client.Hostname, logData)
+				}
+			} else if msg.Type == "telemetry" {
+				var tel TelemetryData
+				if err := json.Unmarshal(msg.Data, &tel); err == nil {
+					telemetryMutex.Lock()
+					clientTelemetry[clientID] = tel
+					telemetryMutex.Unlock()
+				}
+			} else if msg.Type == "terminal_output" {
+				var termData struct {
+					CommandID string `json:"command_id"`
+					Output    string `json:"output"`
+				}
+				if err := json.Unmarshal(msg.Data, &termData); err == nil {
+					payload, _ := json.Marshal(map[string]string{
+						"clientId":   clientID,
+						"hostname":   client.Hostname,
+						"command_id": termData.CommandID,
+						"output":     termData.Output,
+					})
+					terminalMutex.Lock()
+					for tc := range terminalClients {
+						_ = tc.WriteMessage(websocket.TextMessage, payload)
+					}
+					terminalMutex.Unlock()
+				}
 			}
 		}
 	}
@@ -299,6 +350,93 @@ func handleLogsWS(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+}
+
+func handleTerminalWS(w http.ResponseWriter, r *http.Request) {
+	conn, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Println("Terminal WS Upgrade error:", err)
+		return
+	}
+	defer conn.Close()
+
+	terminalMutex.Lock()
+	terminalClients[conn] = true
+	terminalMutex.Unlock()
+
+	log.Println("Öğretmen paneli uzaktan terminal izleyici bağlandı.")
+
+	for {
+		_, _, err := conn.ReadMessage()
+		if err != nil {
+			terminalMutex.Lock()
+			delete(terminalClients, conn)
+			terminalMutex.Unlock()
+			log.Println("Öğretmen paneli uzaktan terminal izleyici ayrıldı.")
+			return
+		}
+	}
+}
+
+func handleTerminalRun(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+	w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
+
+	if r.Method == "OPTIONS" {
+		return
+	}
+
+	if r.Method != "POST" {
+		http.Error(w, "Sadece POST metodu kabul edilir", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req struct {
+		ClientID  string `json:"clientId"`
+		Command   string `json:"command"`
+		CommandID string `json:"command_id"`
+	}
+
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		http.Error(w, "Geçersiz istek", http.StatusBadRequest)
+		return
+	}
+
+	mutex.Lock()
+	client, exists := clients[req.ClientID]
+	mutex.Unlock()
+
+	if !exists {
+		http.Error(w, "İstemci bulunamadı", http.StatusNotFound)
+		return
+	}
+
+	cmdMsg := map[string]string{
+		"action":     "run_terminal",
+		"command":    req.Command,
+		"command_id": req.CommandID,
+	}
+	err = client.Conn.WriteJSON(cmdMsg)
+	if err != nil {
+		http.Error(w, "Komut gönderilemedi", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(`{"status":"sent"}`))
+}
+
+func handleTelemetryAPI(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+
+	telemetryMutex.Lock()
+	data, _ := json.Marshal(clientTelemetry)
+	telemetryMutex.Unlock()
+
+	w.Write(data)
 }
 
 const shareHTML = `<!DOCTYPE html>
@@ -930,6 +1068,9 @@ func main() {
 	http.HandleFunc("/share", handleSharePage)
 	http.HandleFunc("/ws/student-viewer", handleStudentViewerWS)
 	http.HandleFunc("/ws/logs", localOnly(handleLogsWS))
+	http.HandleFunc("/ws/terminal", localOnly(handleTerminalWS))
+	http.HandleFunc("/api/terminal/run", localOnly(handleTerminalRun))
+	http.HandleFunc("/api/telemetry", localOnly(handleTelemetryAPI))
 	http.HandleFunc("/api/clients", localOnly(getClients))
 	http.HandleFunc("/api/command", localOnly(handleCommand))
 	http.HandleFunc("/api/screen", localOnly(getScreen))
