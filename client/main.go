@@ -969,12 +969,6 @@ func main() {
 			continue
 		}
 
-		wsMutex.Lock()
-		wsConn = c
-		wsMutex.Unlock()
-
-		log.Println("Sunucuya başarıyla bağlanıldı!")
-
 		// Sisteme bağlandığını bildiren ilk mesaj (Handshake)
 		handshake := map[string]string{
 			"hostname": hostname,
@@ -987,6 +981,12 @@ func main() {
 			time.Sleep(2 * time.Second)
 			continue
 		}
+
+		wsMutex.Lock()
+		wsConn = c
+		wsMutex.Unlock()
+
+		log.Println("Sunucuya başarıyla bağlanıldı!")
 
 		done := make(chan struct{})
 
