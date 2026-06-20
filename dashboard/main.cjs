@@ -95,6 +95,7 @@ function createWindow() {
   });
 
   const win = new BrowserWindow({
+    title: "PolyOS Lab - Öğretmen Paneli",
     width: 1200,
     height: 800,
     webPreferences: {
