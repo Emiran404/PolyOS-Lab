@@ -787,20 +787,38 @@ func handleBlocked(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(html))
 }
 
+func localOnly(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ip, _, err := net.SplitHostPort(r.RemoteAddr)
+		if err != nil {
+			ip = r.RemoteAddr
+		}
+		
+		// Sadece loopback (localhost) bağlantılarına izin ver
+		if ip == "127.0.0.1" || ip == "::1" || ip == "localhost" {
+			next(w, r)
+			return
+		}
+		
+		log.Printf("[GÜVENLİK UYARISI] Dış ağdan yetkisiz erişim engellendi: IP=%s Yol=%s\n", ip, r.URL.Path)
+		http.Error(w, "Erişim Engellendi: Bu işleme sadece sunucu üzerindeki yerel panel izin verebilir.", http.StatusForbidden)
+	}
+}
+
 func main() {
 	http.HandleFunc("/blocked", handleBlocked)
 	http.HandleFunc("/ws", handleWS)
-	http.HandleFunc("/ws/teacher", handleTeacherWS)
+	http.HandleFunc("/ws/teacher", localOnly(handleTeacherWS))
 	http.HandleFunc("/share", handleSharePage)
 	http.HandleFunc("/ws/student-viewer", handleStudentViewerWS)
-	http.HandleFunc("/api/clients", getClients)
-	http.HandleFunc("/api/command", handleCommand)
-	http.HandleFunc("/api/screen", getScreen)
-	http.HandleFunc("/api/upload", handleUpload)
-	http.HandleFunc("/api/input", handleInput)
-	http.HandleFunc("/api/devices", handleDevices)
-	http.HandleFunc("/api/wake", handleWake)
-	http.HandleFunc("/api/devices/delete", handleDeleteDevice)
+	http.HandleFunc("/api/clients", localOnly(getClients))
+	http.HandleFunc("/api/command", localOnly(handleCommand))
+	http.HandleFunc("/api/screen", localOnly(getScreen))
+	http.HandleFunc("/api/upload", localOnly(handleUpload))
+	http.HandleFunc("/api/input", localOnly(handleInput))
+	http.HandleFunc("/api/devices", localOnly(handleDevices))
+	http.HandleFunc("/api/wake", localOnly(handleWake))
+	http.HandleFunc("/api/devices/delete", localOnly(handleDeleteDevice))
 
 	// Yüklenen dosyaları statik olarak servis et
 	fs := http.FileServer(http.Dir(uploadDir))
