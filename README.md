@@ -157,7 +157,3 @@ sudo go run main.go
 Bu proje **MIT** lisansı altında lisanslanmıştır. Daha fazla bilgi için `LICENSE` dosyasına göz atabilirsiniz.
 
 ---
-
-<p align="center">
-  Developed with ❤️ by <strong>Emirhan Gök</strong>
-</p>
