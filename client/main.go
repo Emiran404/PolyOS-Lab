@@ -32,7 +32,121 @@ var (
 	screenQuality   = 60 // Varsayılan kalite
 	qualityMutex    sync.Mutex
 	serverURL       = "ws://localhost:8080/ws"
+	secretToken     = "polyos-secure-token"
+	logFile         *os.File
 )
+
+type ClientConfig struct {
+	ServerURL   string `json:"server_url"`
+	SecretToken string `json:"secret_token"`
+}
+
+func getConfigPath() string {
+	if runtime.GOOS == "darwin" {
+		home, _ := os.UserHomeDir()
+		return filepath.Join(home, ".config", "polyos", "client.json")
+	}
+	return "/etc/polyos/client.json"
+}
+
+func loadConfig() {
+	configPath := getConfigPath()
+	if _, err := os.Stat(configPath); os.IsNotExist(err) {
+		log.Println("Yapılandırma dosyası bulunamadı, otomatik keşif denenecek:", configPath)
+		return
+	}
+
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		log.Println("Yapılandırma dosyası okunamadı:", err)
+		return
+	}
+
+	var config ClientConfig
+	err = json.Unmarshal(data, &config)
+	if err != nil {
+		log.Println("Yapılandırma dosyası ayrıştırılamadı:", err)
+		return
+	}
+
+	if config.ServerURL != "" {
+		serverURL = config.ServerURL
+	}
+	if config.SecretToken != "" {
+		secretToken = config.SecretToken
+	}
+	log.Println("Yapılandırma başarıyla yüklendi. Sunucu:", serverURL)
+}
+
+func discoverServer() {
+	log.Println("UDP üzerinden sunucu aranıyor (Port: 9999)...")
+	addr, err := net.ResolveUDPAddr("udp", ":9999")
+	if err != nil {
+		log.Println("UDP çözümleme hatası:", err)
+		return
+	}
+
+	conn, err := net.ListenUDP("udp", addr)
+	if err != nil {
+		log.Println("UDP Port 9999 dinlenemedi (Zaten kullanımda veya yetki yok):", err)
+		return
+	}
+	defer conn.Close()
+
+	// 8 saniyelik okuma zaman aşımı
+	_ = conn.SetReadDeadline(time.Now().Add(8 * time.Second))
+
+	buf := make([]byte, 1024)
+	n, _, err := conn.ReadFromUDP(buf)
+	if err != nil {
+		log.Println("Sunucu keşfi zaman aşımına uğradı, varsayılan/yapılandırılmış adres kullanılacak.")
+		return
+	}
+
+	message := string(buf[:n])
+	if strings.HasPrefix(message, "POLYOS_SERVER:") {
+		parts := strings.Split(message, ":")
+		if len(parts) >= 3 {
+			ip := parts[1]
+			port := parts[2]
+			serverURL = fmt.Sprintf("ws://%s:%s/ws", ip, port)
+			log.Println("Sunucu otomatik keşfedildi:", serverURL)
+		}
+	}
+}
+
+func setupLogging() {
+	if runtime.GOOS == "darwin" {
+		return // macOS'ta normal terminal logu
+	}
+	
+	logDir := "/var/log"
+	logFilePath := filepath.Join(logDir, "polyos-client.log")
+	
+	// Klasörün varlığını kontrol et
+	_ = os.MkdirAll(logDir, 0755)
+	
+	var err error
+	logFile, err = os.OpenFile(logFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	if err != nil {
+		// Log klasörüne yazılamazsa, temp klasörünü dene
+		tempLogPath := filepath.Join(os.TempDir(), "polyos-client.log")
+		logFile, err = os.OpenFile(tempLogPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+		if err == nil {
+			log.SetOutput(logFile)
+			log.Println("Log dosyası geçici klasörde açıldı:", tempLogPath)
+		}
+	} else {
+		log.SetOutput(logFile)
+		log.Println("Sistem log dosyası açıldı:", logFilePath)
+	}
+}
+
+func closeLogging() {
+	if logFile != nil {
+		logFile.Close()
+	}
+}
 
 func setCaptureInterval(d time.Duration) {
 	intervalMutex.Lock()
@@ -632,6 +746,19 @@ func handleInputEvent(event string, data map[string]interface{}) {
 }
 
 func main() {
+	setupLogging()
+	defer closeLogging()
+
+	log.Println("PolyOS Lab İstemcisi başlatılıyor...")
+
+	// Konfigürasyonu yükle
+	loadConfig()
+
+	// Eğer sunucu adresi belirtilmemişse veya varsayılansa UDP keşfi dene
+	if serverURL == "ws://localhost:8080/ws" {
+		discoverServer()
+	}
+
 	// Yönlendirme sunucusunu başlat (sudo ile çalıştırıldıysa :80 portunu dinler)
 	startLocalRedirectServer(serverURL)
 
@@ -644,9 +771,10 @@ func main() {
 	signal.Notify(interrupt, os.Interrupt)
 
 	for {
+		dialURL := fmt.Sprintf("%s?token=%s", serverURL, secretToken)
 		log.Printf("Bağlanılıyor: %s (Cihaz: %s)...\n", serverURL, hostname)
 
-		c, _, err := websocket.DefaultDialer.Dial(serverURL, nil)
+		c, _, err := websocket.DefaultDialer.Dial(dialURL, nil)
 		if err != nil {
 			log.Println("Bağlantı başarısız, 5 saniye içinde tekrar deneniyor...", err)
 			time.Sleep(5 * time.Second)

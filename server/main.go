@@ -24,6 +24,8 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
+var authToken = "polyos-secure-token"
+
 type Client struct {
 	ID       string
 	Hostname string
@@ -77,6 +79,14 @@ var (
 )
 
 func handleWS(w http.ResponseWriter, r *http.Request) {
+	// Token doğrulaması
+	token := r.URL.Query().Get("token")
+	if token != authToken {
+		log.Printf("[GÜVENLİK UYARISI] Geçersiz veya eksik token ile istemci bağlantı denemesi reddedildi: IP=%s\n", r.RemoteAddr)
+		http.Error(w, "Unauthorized: Invalid token", http.StatusUnauthorized)
+		return
+	}
+
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Println("Upgrade error:", err)
@@ -805,6 +815,46 @@ func localOnly(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
+func startUDPBeacon(port string) {
+	addr, err := net.ResolveUDPAddr("udp", "255.255.255.255:9999")
+	if err != nil {
+		log.Println("UDP Beacon adresi çözülemedi:", err)
+		return
+	}
+	
+	conn, err := net.DialUDP("udp", nil, addr)
+	if err != nil {
+		log.Println("UDP Beacon bağlantısı kurulamadı:", err)
+		return
+	}
+	defer conn.Close()
+
+	log.Println("UDP Sunucu Keşif Yayını (Beacon) başlatıldı. Port: 9999")
+	for {
+		localIP := getLocalIP()
+		if localIP != "" {
+			message := fmt.Sprintf("POLYOS_SERVER:%s:%s", localIP, port)
+			_, _ = conn.Write([]byte(message))
+		}
+		time.Sleep(3 * time.Second)
+	}
+}
+
+func getLocalIP() string {
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		return ""
+	}
+	for _, address := range addrs {
+		if ipnet, ok := address.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
+			if ipnet.IP.To4() != nil {
+				return ipnet.IP.String()
+			}
+		}
+	}
+	return ""
+}
+
 func main() {
 	http.HandleFunc("/blocked", handleBlocked)
 	http.HandleFunc("/ws", handleWS)
@@ -825,8 +875,14 @@ func main() {
 	http.Handle("/uploads/", http.StripPrefix("/uploads/", fs))
 
 	portFlag := flag.String("port", "8080", "Port to listen on")
+	tokenFlag := flag.String("token", "polyos-secure-token", "Authentication token for clients")
 	flag.Parse()
+	
+	authToken = *tokenFlag
 	port := ":" + *portFlag
+
+	// UDP Beacon yayını başlat
+	go startUDPBeacon(*portFlag)
 
 	log.Printf("PolyOS Lab Server (Go) %s portunda dinleniyor...\n", port)
 	err := http.ListenAndServe(port, nil)
