@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "description": "PolyOS Lab Teacher Dashboard",
-  "author": "Emirhan Gok",
+  "author": "Emirhan Gok <emiran404@github.com>",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Emiran404/PolyOS-Lab.git"
