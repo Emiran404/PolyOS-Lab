@@ -1042,25 +1042,39 @@ func localOnly(next http.HandlerFunc) http.HandlerFunc {
 }
 
 func startUDPBeacon(port string) {
-	addr, err := net.ResolveUDPAddr("udp", "255.255.255.255:9999")
-	if err != nil {
-		log.Println("UDP Beacon adresi çözülemedi:", err)
-		return
+	// Broadcast address
+	bAddr, bErr := net.ResolveUDPAddr("udp", "255.255.255.255:9999")
+	// Multicast address (mDNS group on port 9999)
+	mAddr, mErr := net.ResolveUDPAddr("udp", "224.0.0.251:9999")
+	
+	var bConn, mConn *net.UDPConn
+	if bErr == nil {
+		bConn, _ = net.DialUDP("udp", nil, bAddr)
+	}
+	if mErr == nil {
+		mConn, _ = net.DialUDP("udp", nil, mAddr)
 	}
 	
-	conn, err := net.DialUDP("udp", nil, addr)
-	if err != nil {
-		log.Println("UDP Beacon bağlantısı kurulamadı:", err)
-		return
-	}
-	defer conn.Close()
+	defer func() {
+		if bConn != nil {
+			bConn.Close()
+		}
+		if mConn != nil {
+			mConn.Close()
+		}
+	}()
 
-	log.Println("UDP Sunucu Keşif Yayını (Beacon) başlatıldı. Port: 9999")
+	log.Println("UDP Sunucu Keşif Yayını (Beacon + Multicast) başlatıldı. Port: 9999")
 	for {
 		localIP := getLocalIP()
 		if localIP != "" {
 			message := fmt.Sprintf("POLYOS_SERVER:%s:%s", localIP, port)
-			_, _ = conn.Write([]byte(message))
+			if bConn != nil {
+				_, _ = bConn.Write([]byte(message))
+			}
+			if mConn != nil {
+				_, _ = mConn.Write([]byte(message))
+			}
 		}
 		time.Sleep(3 * time.Second)
 	}

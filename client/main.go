@@ -128,7 +128,32 @@ func loadConfig() {
 }
 
 func discoverServer() {
-	log.Println("UDP üzerinden sunucu aranıyor (Port: 9999)...")
+	log.Println("Multicast (mDNS) ve UDP üzerinden sunucu aranıyor (Port: 9999)...")
+	
+	// 1. Multicast deneme
+	mAddr, err := net.ResolveUDPAddr("udp4", "224.0.0.251:9999")
+	if err == nil {
+		mConn, err := net.ListenMulticastUDP("udp4", nil, mAddr)
+		if err == nil {
+			defer mConn.Close()
+			_ = mConn.SetReadDeadline(time.Now().Add(4 * time.Second))
+			buf := make([]byte, 1024)
+			n, _, err := mConn.ReadFromUDP(buf)
+			if err == nil {
+				message := string(buf[:n])
+				if strings.HasPrefix(message, "POLYOS_SERVER:") {
+					parts := strings.Split(message, ":")
+					if len(parts) >= 3 {
+						serverURL = fmt.Sprintf("ws://%s:%s/ws", parts[1], parts[2])
+						log.Println("Sunucu Multicast (mDNS) ile otomatik keşfedildi:", serverURL)
+						return
+					}
+				}
+			}
+		}
+	}
+
+	// 2. Broadcast (Geleneksel UDP) deneme (Fallback)
 	addr, err := net.ResolveUDPAddr("udp", ":9999")
 	if err != nil {
 		log.Println("UDP çözümleme hatası:", err)
@@ -142,9 +167,7 @@ func discoverServer() {
 	}
 	defer conn.Close()
 
-	// 8 saniyelik okuma zaman aşımı
-	_ = conn.SetReadDeadline(time.Now().Add(8 * time.Second))
-
+	_ = conn.SetReadDeadline(time.Now().Add(4 * time.Second))
 	buf := make([]byte, 1024)
 	n, _, err := conn.ReadFromUDP(buf)
 	if err != nil {
@@ -156,10 +179,8 @@ func discoverServer() {
 	if strings.HasPrefix(message, "POLYOS_SERVER:") {
 		parts := strings.Split(message, ":")
 		if len(parts) >= 3 {
-			ip := parts[1]
-			port := parts[2]
-			serverURL = fmt.Sprintf("ws://%s:%s/ws", ip, port)
-			log.Println("Sunucu otomatik keşfedildi:", serverURL)
+			serverURL = fmt.Sprintf("ws://%s:%s/ws", parts[1], parts[2])
+			log.Println("Sunucu Broadcast ile otomatik keşfedildi:", serverURL)
 		}
 	}
 }
