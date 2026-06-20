@@ -1,0 +1,126 @@
+name: PolyOS Lab CI/CD Build & Release
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    name: Build and Create Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # 1. Node.js & Electron/React Build
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: dashboard/package-lock.json
+
+      - name: Build Teacher Dashboard (.deb)
+        run: |
+          cd dashboard
+          npm ci
+          npm run electron:build
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # 2. Go Build (Client & Server)
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.20'
+          cache-dependency-path: |
+            server/go.sum
+            client/go.sum
+
+      - name: Compile Go Binaries
+        run: |
+          cd server
+          GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o polyos-server main.go
+          cd ../client
+          GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o polyos-client main.go
+
+      # 3. Create Server Debian Package (.deb)
+      - name: Package Server into .deb
+        run: |
+          mkdir -p polyos-server_1.0.0_amd64/DEBIAN
+          mkdir -p polyos-server_1.0.0_amd64/usr/bin
+          cp server/polyos-server polyos-server_1.0.0_amd64/usr/bin/
+          
+          cat <<EOF > polyos-server_1.0.0_amd64/DEBIAN/control
+          Package: polyos-server
+          Version: 1.0.0
+          Section: utils
+          Priority: optional
+          Architecture: amd64
+          Maintainer: Emirhan Gok <emiran404@github.com>
+          Description: PolyOS Lab central management server
+          EOF
+          
+          dpkg-deb --build polyos-server_1.0.0_amd64
+
+      # 4. Create Client Debian Package (.deb)
+      - name: Package Client into .deb
+        run: |
+          mkdir -p polyos-client_1.0.0_amd64/DEBIAN
+          mkdir -p polyos-client_1.0.0_amd64/usr/bin
+          cp client/polyos-client polyos-client_1.0.0_amd64/usr/bin/
+          
+          cat <<EOF > polyos-client_1.0.0_amd64/DEBIAN/control
+          Package: polyos-client
+          Version: 1.0.0
+          Section: utils
+          Priority: optional
+          Architecture: amd64
+          Depends: xinput, scrot, xdotool, xclip, python3, python3-tk
+          Maintainer: Emirhan Gok <emiran404@github.com>
+          Description: PolyOS Lab student client daemon
+          EOF
+          
+          dpkg-deb --build polyos-client_1.0.0_amd64
+
+      # 5. Create Release Notes (releases.txt)
+      - name: Generate Release Notes
+        run: |
+          cat <<EOF > releases.txt
+          PolyOS Lab - Sürüm Bilgileri
+          Tarih: $(date +'%Y-%m-%d %H:%M:%S')
+          
+          Değişiklikler:
+          - Canlı Öğrenci Ekranı İzleme ve Uzaktan Kontrol eklendi.
+          - Wake-on-LAN (PolyOS Wake) ile çevrimdışı bilgisayarları uyandırma eklendi.
+          - Çekirdek modülü seviyesinde USB Engelleme desteği eklendi.
+          - Tkinter tabanlı aşılmaz Kilit Ekranı uyarısı ("Bu Bilgisayar Kilitlendi") entegre edildi.
+          - Cihazları uzaktan uyku moduna alma (sleep/suspend) özelliği eklendi.
+          - Öğretmen ekranını öğrencilere yansıtma (Screen Share) özelliği eklendi.
+          
+          Yüklenen Paketler (.deb):
+          1. polyos-lab-dashboard (Öğretmen Paneli)
+          2. polyos-server (Merkezi Sunucu)
+          3. polyos-client (Öğrenci İstemcisi)
+          EOF
+
+      # 6. Upload Assets and Create/Update Release
+      - name: Release Assets
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          body_path: releases.txt
+          files: |
+            dashboard/release/*.deb
+            polyos-server_1.0.0_amd64.deb
+            polyos-client_1.0.0_amd64.deb
+            releases.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
