@@ -42,7 +42,7 @@ function startGoServer(port = '8080') {
   
   try {
     console.log(`Starting Go server from: ${binPath}`);
-    serverProcess = spawn(binPath, ['-port', port], {
+    serverProcess = spawn(binPath, ['-port', port, '-token', 'polyos-secure-token'], {
       cwd: cwdPath,
       env: { ...process.env, PORT: port }
     });
