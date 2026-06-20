@@ -40,7 +40,22 @@ var (
 	wsMutex         sync.Mutex
 	isLoggingToWS   bool
 	logLoopMutex    sync.Mutex
+	wsWriteMutex    sync.Mutex
 )
+
+func safeWriteJSON(data interface{}) error {
+	wsMutex.Lock()
+	conn := wsConn
+	wsMutex.Unlock()
+
+	if conn == nil {
+		return fmt.Errorf("websocket connection is nil")
+	}
+
+	wsWriteMutex.Lock()
+	defer wsWriteMutex.Unlock()
+	return conn.WriteJSON(data)
+}
 
 type clientLogWriter struct{}
 
@@ -68,7 +83,7 @@ func sendClientLogToServer(msg string) {
 			"type": "log",
 			"data": msg,
 		}
-		_ = conn.WriteJSON(logMsg)
+		_ = safeWriteJSON(logMsg)
 	}
 }
 
@@ -980,6 +995,11 @@ func main() {
 	signal.Notify(interrupt, os.Interrupt)
 
 	for {
+		// Eğer sunucu adresi varsayılan ise veya keşfedilemediyse her denemede tekrar keşfetmeyi dene
+		if serverURL == "ws://localhost:8080/ws" {
+			discoverServer()
+		}
+
 		dialURL := fmt.Sprintf("%s?token=%s", serverURL, secretToken)
 		log.Printf("Bağlanılıyor: %s (Cihaz: %s)...\n", serverURL, hostname)
 
@@ -995,7 +1015,9 @@ func main() {
 			"hostname": hostname,
 			"mac":      getMACAddress(),
 		}
+		wsWriteMutex.Lock()
 		err = c.WriteJSON(handshake)
+		wsWriteMutex.Unlock()
 		if err != nil {
 			log.Println("Handshake gönderilemedi, yeniden deneniyor...", err)
 			c.Close()
@@ -1097,7 +1119,7 @@ func main() {
 					}
 
 					// WebSocket üzerinden sunucuya gönder
-					err := c.WriteJSON(screenMsg)
+					err := safeWriteJSON(screenMsg)
 					if err != nil {
 						log.Println("Ekran verisi gönderilemedi:", err)
 						return
@@ -1125,16 +1147,10 @@ func main() {
 						TotalDisk: diskTotal,
 						UsedDisk:  diskUsed,
 					}
-					wsMutex.Lock()
-					conn := wsConn
-					wsMutex.Unlock()
-					if conn != nil {
-						payload := map[string]interface{}{
-							"type": "telemetry",
-							"data": telData,
-						}
-						_ = conn.WriteJSON(payload)
-					}
+					_ = safeWriteJSON(map[string]interface{}{
+						"type": "telemetry",
+						"data": telData,
+					})
 				}
 			}
 		}()
@@ -1176,26 +1192,18 @@ func executeTerminalCommand(cmdStr, cmdID string) {
 
 	log.Printf("[Terminal] Çıktı uzunluğu: %d\n", len(outputStr))
 
-	wsMutex.Lock()
-	conn := wsConn
-	wsMutex.Unlock()
-
-	if conn != nil {
-		payload := map[string]interface{}{
-			"type": "terminal_output",
-			"data": map[string]string{
-				"command_id": cmdID,
-				"output":     outputStr,
-			},
-		}
-		err = conn.WriteJSON(payload)
-		if err != nil {
-			log.Printf("[Terminal] WebSocket gönderme hatası: %v\n", err)
-		} else {
-			log.Println("[Terminal] Çıktı sunucuya gönderildi.")
-		}
+	payload := map[string]interface{}{
+		"type": "terminal_output",
+		"data": map[string]string{
+			"command_id": cmdID,
+			"output":     outputStr,
+		},
+	}
+	err = safeWriteJSON(payload)
+	if err != nil {
+		log.Printf("[Terminal] WebSocket gönderme hatası: %v\n", err)
 	} else {
-		log.Println("[Terminal] Hata: WebSocket bağlantısı bulunamadı.")
+		log.Println("[Terminal] Çıktı sunucuya gönderildi.")
 	}
 }
 
