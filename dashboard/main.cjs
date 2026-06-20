@@ -7,8 +7,9 @@ let serverProcess = null;
 let serverPort = '8080';
 let serverStatus = 'stopped';
 
-// Compile Go server on launch
+// Compile Go server on launch (only in development)
 function buildGoServer() {
+  if (!isDev) return;
   try {
     console.log('Building Go server...');
     const buildCmd = process.platform === 'win32' ? 'go build -o server_bin.exe main.go' : 'go build -o server_bin main.go';
@@ -25,11 +26,24 @@ function startGoServer(port = '8080') {
   }
   
   serverPort = port;
-  const binName = process.platform === 'win32' ? 'server_bin.exe' : './server_bin';
+  let binPath;
+  let cwdPath;
+
+  if (isDev) {
+    const binName = process.platform === 'win32' ? 'server_bin.exe' : './server_bin';
+    binPath = binName;
+    cwdPath = path.join(__dirname, '../server');
+  } else {
+    // Production'da extraResources klasöründen çalıştır
+    const binName = process.platform === 'win32' ? 'polyos-server.exe' : 'polyos-server';
+    binPath = path.join(process.resourcesPath, binName);
+    cwdPath = process.resourcesPath;
+  }
   
   try {
-    serverProcess = spawn(binName, ['-port', port], {
-      cwd: path.join(__dirname, '../server'),
+    console.log(`Starting Go server from: ${binPath}`);
+    serverProcess = spawn(binPath, ['-port', port], {
+      cwd: cwdPath,
       env: { ...process.env, PORT: port }
     });
     

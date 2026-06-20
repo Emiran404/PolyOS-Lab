@@ -1,7 +1,7 @@
 {
   "name": "dashboard",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.0.5",
   "description": "PolyOS Lab Teacher Dashboard",
   "author": "Emirhan Gok <emiran404@github.com>",
   "repository": {
@@ -25,6 +25,12 @@
     "directories": {
       "output": "release/"
     },
+    "extraResources": [
+      {
+        "from": "../server/polyos-server",
+        "to": "polyos-server"
+      }
+    ],
     "linux": {
       "target": [
         "deb",

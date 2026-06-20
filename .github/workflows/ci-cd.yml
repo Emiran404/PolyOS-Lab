@@ -24,7 +24,7 @@ jobs:
           git fetch --tags --force
           LATEST_TAG=$(git tag -l "v*" | sort -V | tail -n1)
           if [ -z "$LATEST_TAG" ]; then
-            NEW_TAG="v1.0.0"
+            NEW_TAG="v1.0.5"
           else
             VERSION=${LATEST_TAG#v}
             IFS='.' read -r major minor patch <<< "$VERSION"
@@ -33,28 +33,13 @@ jobs:
           fi
           echo "Determined new tag: $NEW_TAG"
           echo "tag_name=$NEW_TAG" >> $GITHUB_ENV
+          echo "version_num=${NEW_TAG#v}" >> $GITHUB_ENV
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git tag $NEW_TAG
           git push origin $NEW_TAG
 
-      # 1. Node.js & Electron/React Build
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: 'npm'
-          cache-dependency-path: dashboard/package-lock.json
-
-      - name: Build Teacher Dashboard (.deb)
-        run: |
-          cd dashboard
-          npm ci
-          npm run electron:build
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      # 2. Go Build (Client & Server)
+      # 1. Set up Go & Build (Client & Server)
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
@@ -70,16 +55,34 @@ jobs:
           cd ../client
           GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o polyos-client main.go
 
+      # 2. Node.js & Electron/React Build (bundles polyos-server)
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: dashboard/package-lock.json
+
+      - name: Build Teacher Dashboard (.deb)
+        run: |
+          cd dashboard
+          npm ci
+          npm run electron:build
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       # 3. Create Server Debian Package (.deb)
       - name: Package Server into .deb
         run: |
-          mkdir -p polyos-server_1.0.0_amd64/DEBIAN
-          mkdir -p polyos-server_1.0.0_amd64/usr/bin
-          cp server/polyos-server polyos-server_1.0.0_amd64/usr/bin/
+          VERSION=${{ env.version_num }}
+          PKG_DIR="polyos-server_${VERSION}_amd64"
+          mkdir -p $PKG_DIR/DEBIAN
+          mkdir -p $PKG_DIR/usr/bin
+          cp server/polyos-server $PKG_DIR/usr/bin/
           
-          cat <<EOF > polyos-server_1.0.0_amd64/DEBIAN/control
+          cat <<EOF > $PKG_DIR/DEBIAN/control
           Package: polyos-server
-          Version: 1.0.0
+          Version: ${VERSION}
           Section: utils
           Priority: optional
           Architecture: amd64
@@ -87,18 +90,42 @@ jobs:
           Description: PolyOS Lab central management server
           EOF
           
-          dpkg-deb --build polyos-server_1.0.0_amd64
+          dpkg-deb --build $PKG_DIR
 
-      # 4. Create Client Debian Package (.deb)
+      # 4. Create Client Debian Package (.deb) with Autostart & Systemd Daemon
       - name: Package Client into .deb
         run: |
-          mkdir -p polyos-client_1.0.0_amd64/DEBIAN
-          mkdir -p polyos-client_1.0.0_amd64/usr/bin
-          cp client/polyos-client polyos-client_1.0.0_amd64/usr/bin/
+          VERSION=${{ env.version_num }}
+          PKG_DIR="polyos-client_${VERSION}_amd64"
+          mkdir -p $PKG_DIR/DEBIAN
+          mkdir -p $PKG_DIR/usr/bin
+          mkdir -p $PKG_DIR/lib/systemd/system
           
-          cat <<EOF > polyos-client_1.0.0_amd64/DEBIAN/control
+          # Copy client binary
+          cp client/polyos-client $PKG_DIR/usr/bin/
+          
+          # Create systemd service
+          cat <<EOF > $PKG_DIR/lib/systemd/system/polyos-client.service
+          [Unit]
+          Description=PolyOS Lab Client Service
+          After=network.target display-manager.service
+          
+          [Service]
+          Type=simple
+          ExecStart=/usr/bin/polyos-client
+          Restart=always
+          RestartSec=5
+          Environment=DISPLAY=:0
+          Environment=XAUTHORITY=/var/run/lightdm/root/:0
+          
+          [Install]
+          WantedBy=graphical.target
+          EOF
+          
+          # Create control file
+          cat <<EOF > $PKG_DIR/DEBIAN/control
           Package: polyos-client
-          Version: 1.0.0
+          Version: ${VERSION}
           Section: utils
           Priority: optional
           Architecture: amd64
@@ -107,13 +134,32 @@ jobs:
           Description: PolyOS Lab student client daemon
           EOF
           
-          dpkg-deb --build polyos-client_1.0.0_amd64
+          # Create postinst script
+          cat <<EOF > $PKG_DIR/DEBIAN/postinst
+          #!/bin/sh
+          set -e
+          systemctl daemon-reload
+          systemctl enable polyos-client.service
+          systemctl start polyos-client.service
+          EOF
+          chmod 755 $PKG_DIR/DEBIAN/postinst
+          
+          # Create prerm script
+          cat <<EOF > $PKG_DIR/DEBIAN/prerm
+          #!/bin/sh
+          set -e
+          systemctl stop polyos-client.service || true
+          systemctl disable polyos-client.service || true
+          EOF
+          chmod 755 $PKG_DIR/DEBIAN/prerm
+          
+          dpkg-deb --build $PKG_DIR
 
       # 5. Create Release Notes (releases.txt)
       - name: Generate Release Notes
         run: |
           cat <<EOF > releases.txt
-          PolyOS Lab - Sürüm Bilgileri
+          PolyOS Lab - Sürüm Bilgileri (${{ env.tag_name }})
           Tarih: $(date +'%Y-%m-%d %H:%M:%S')
           
           Değişiklikler:
@@ -123,6 +169,8 @@ jobs:
           - Tkinter tabanlı aşılmaz Kilit Ekranı uyarısı ("Bu Bilgisayar Kilitlendi") entegre edildi.
           - Cihazları uzaktan uyku moduna alma (sleep/suspend) özelliği eklendi.
           - Öğretmen ekranını öğrencilere yansıtma (Screen Share) özelliği eklendi.
+          - İstemci (client) için otomatik başlatma (Systemd daemon) entegre edildi.
+          - Öğretmen paneli (dashboard) için gömülü/entegre sunucu entegrasyonu tamamlandı.
           
           Yüklenen Paketler (.deb):
           1. polyos-lab-dashboard (Öğretmen Paneli)
@@ -138,8 +186,8 @@ jobs:
           body_path: releases.txt
           files: |
             dashboard/release/*.deb
-            polyos-server_1.0.0_amd64.deb
-            polyos-client_1.0.0_amd64.deb
+            polyos-server_${{ env.version_num }}_amd64.deb
+            polyos-client_${{ env.version_num }}_amd64.deb
             releases.txt
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
