@@ -123,16 +123,26 @@ func handleWS(w http.ResponseWriter, r *http.Request) {
 		MAC      string `json:"mac"`
 	}
 	
-	err = conn.ReadJSON(&handshake)
+	_, msgBytes, err := conn.ReadMessage()
 	if err != nil {
-		log.Println("Handshake error:", err)
+		log.Println("Handshake read error:", err)
+		return
+	}
+	log.Printf("Handshake raw data: %s\n", string(msgBytes))
+	err = json.Unmarshal(msgBytes, &handshake)
+	if err != nil {
+		log.Println("Handshake JSON unmarshal error:", err)
 		return
 	}
 
 	clientID := r.RemoteAddr
+	host := handshake.Hostname
+	if host == "" {
+		host = "İstemci-" + clientID
+	}
 	client := &Client{
 		ID:       clientID,
-		Hostname: handshake.Hostname,
+		Hostname: host,
 		MAC:      handshake.MAC,
 		Conn:     conn,
 	}
