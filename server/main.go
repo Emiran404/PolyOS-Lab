@@ -26,6 +26,9 @@ var upgrader = websocket.Upgrader{
 
 var authToken = "polyos-secure-token"
 
+var logClients = make(map[*websocket.Conn]bool)
+var logMutex sync.Mutex
+
 type Client struct {
 	ID       string
 	Hostname string
@@ -229,6 +232,48 @@ func handleStudentViewerWS(w http.ResponseWriter, r *http.Request) {
 			delete(studentViewers, conn)
 			viewersMutex.Unlock()
 			log.Println("Öğrenci ekran izleme arayüzü ayrıldı.")
+			return
+		}
+	}
+}
+
+func broadcastLog(message string) {
+	logMutex.Lock()
+	defer logMutex.Unlock()
+	for client := range logClients {
+		_ = client.WriteMessage(websocket.TextMessage, []byte(message))
+	}
+}
+
+type wsLogWriter struct{}
+
+func (w *wsLogWriter) Write(p []byte) (n int, err error) {
+	n, err = os.Stdout.Write(p)
+	broadcastLog(strings.TrimSpace(string(p)))
+	return n, err
+}
+
+func handleLogsWS(w http.ResponseWriter, r *http.Request) {
+	conn, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Println("Logs WS Upgrade error:", err)
+		return
+	}
+	defer conn.Close()
+
+	logMutex.Lock()
+	logClients[conn] = true
+	logMutex.Unlock()
+
+	log.Println("Öğretmen paneli log izleyici bağlandı.")
+
+	for {
+		_, _, err := conn.ReadMessage()
+		if err != nil {
+			logMutex.Lock()
+			delete(logClients, conn)
+			logMutex.Unlock()
+			log.Println("Öğretmen paneli log izleyici ayrıldı.")
 			return
 		}
 	}
@@ -856,11 +901,13 @@ func getLocalIP() string {
 }
 
 func main() {
+	log.SetOutput(&wsLogWriter{})
 	http.HandleFunc("/blocked", handleBlocked)
 	http.HandleFunc("/ws", handleWS)
 	http.HandleFunc("/ws/teacher", localOnly(handleTeacherWS))
 	http.HandleFunc("/share", handleSharePage)
 	http.HandleFunc("/ws/student-viewer", handleStudentViewerWS)
+	http.HandleFunc("/ws/logs", localOnly(handleLogsWS))
 	http.HandleFunc("/api/clients", localOnly(getClients))
 	http.HandleFunc("/api/command", localOnly(handleCommand))
 	http.HandleFunc("/api/screen", localOnly(getScreen))

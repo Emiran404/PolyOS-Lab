@@ -24,7 +24,8 @@ import {
   MessageSquare,
   Network,
   WifiOff,
-  Moon
+  Moon,
+  Terminal
 } from 'lucide-react';
 import './App.css';
 
@@ -36,8 +37,44 @@ interface Client {
 function App() {
   const [clients, setClients] = useState<Client[]>([]);
   const [activeTab, setActiveTab] = useState('summary');
+  const [logs, setLogs] = useState<string[]>([]);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [refreshTicker, setRefreshTicker] = useState(0);
+
+  // Canlı Log Kayıtlarını Dinleme
+  useEffect(() => {
+    let ws: WebSocket | null = null;
+    let reconnectTimeout: any = null;
+
+    const connectLogs = () => {
+      ws = new WebSocket('ws://localhost:8080/ws/logs');
+      
+      ws.onmessage = (event) => {
+        setLogs(prev => {
+          const newLogs = [...prev, `${new Date().toLocaleTimeString('tr-TR')} - ${event.data}`];
+          if (newLogs.length > 200) {
+            return newLogs.slice(newLogs.length - 200);
+          }
+          return newLogs;
+        });
+      };
+
+      ws.onclose = () => {
+        reconnectTimeout = setTimeout(connectLogs, 3000);
+      };
+
+      ws.onerror = () => {
+        ws?.close();
+      };
+    };
+
+    connectLogs();
+
+    return () => {
+      if (ws) ws.close();
+      if (reconnectTimeout) clearTimeout(reconnectTimeout);
+    };
+  }, []);
 
   // Uzaktan Kontrol (Remote Control) State'leri
   const [controlClient, setControlClient] = useState<Client | null>(null);
@@ -525,6 +562,7 @@ function App() {
     { icon: MonitorPlay, label: 'Ekran İzleme', id: 'screen' },
     { icon: FolderOpen, label: 'Dosya Transferi', id: 'files' },
     { icon: Power, label: 'PolyOS Wake', id: 'polyos_wake' },
+    { icon: Terminal, label: 'Sistem Logları', id: 'logs' },
     { icon: Settings, label: 'Ayarlar', id: 'settings' },
   ];
 
@@ -1144,7 +1182,7 @@ function App() {
                   alignItems: 'center',
                   justifyContent: 'center'
                 }}>
-                  <div style={{ position: 'absolute', top: '10px', left: '15px', fontSize: '11px', color: 'var(--color-text-muted)', fontWeight: 600 }}>Ağ Trafik Akışı (Simüle Canlı)</div>
+                  <div style={{ position: 'absolute', top: '10px', left: '15px', fontSize: '11px', color: 'var(--color-text-muted)', fontWeight: 600 }}>Ağ Trafik Akışı</div>
                   <svg width="100%" height="100%" viewBox="0 0 400 100" preserveAspectRatio="none" style={{ position: 'absolute', bottom: 0, left: 0 }}>
                     <path 
                       d={`M 0 80 Q 50 ${60 + (Math.random() - 0.5) * 15} 100 ${70 + (Math.random() - 0.5) * 15} T 200 ${50 + (Math.random() - 0.5) * 20} T 300 ${80 + (Math.random() - 0.5) * 10} T 400 ${internetStatus === 'disabled' ? 100 : 40}`} 
@@ -1664,6 +1702,55 @@ function App() {
                   </tbody>
                 </table>
               )}
+            </div>
+          </div>
+        );
+      case 'logs':
+        return (
+          <div className="card">
+            <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <h2 className="card-title">Sistem Log Kayıtları</h2>
+                <p style={{ fontSize: '13px', color: 'var(--color-text-muted)', marginTop: '4px' }}>
+                  PolyOS Lab sunucusu ve bağlı istemcilerin canlı olay günlükleri.
+                </p>
+              </div>
+              <button 
+                className="btn-primary" 
+                onClick={() => setLogs([])}
+                style={{ backgroundColor: '#dc2626' }}
+              >
+                Temizle
+              </button>
+            </div>
+            <div style={{ marginTop: '20px' }}>
+              <div style={{
+                backgroundColor: '#0f172a',
+                color: '#38bdf8',
+                fontFamily: 'monospace',
+                padding: '16px',
+                borderRadius: '12px',
+                height: '450px',
+                overflowY: 'auto',
+                fontSize: '13px',
+                lineHeight: '1.6',
+                display: 'flex',
+                flexDirection: 'column-reverse',
+              }}>
+                <div>
+                  {logs.length === 0 ? (
+                    <div style={{ color: '#64748b', textAlign: 'center', paddingTop: '150px' }}>
+                      Log kaydı bulunmuyor. Canlı hareketler bekleniyor...
+                    </div>
+                  ) : (
+                    logs.map((logLine, index) => (
+                      <div key={index} style={{ borderBottom: '1px solid #1e293b', padding: '4px 0' }}>
+                        {logLine}
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         );
