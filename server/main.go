@@ -37,6 +37,10 @@ type TelemetryData struct {
 	CPUTemp   float64 `json:"cpuTemp"`
 	RAMUsage  float64 `json:"ramUsage"`
 	DiskUsage float64 `json:"diskUsage"`
+	TotalRAM  float64 `json:"totalRam"`
+	UsedRAM   float64 `json:"usedRam"`
+	TotalDisk float64 `json:"totalDisk"`
+	UsedDisk  float64 `json:"usedDisk"`
 }
 
 var clientTelemetry = make(map[string]TelemetryData)

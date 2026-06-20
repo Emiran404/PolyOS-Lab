@@ -59,7 +59,7 @@ function App() {
   }, [terminalLines, activeTerminalClients]);
   
   // Telemetri (Sağlık Haritası) State'leri
-  const [telemetryData, setTelemetryData] = useState<Record<string, { cpuUsage: number; cpuTemp: number; ramUsage: number; diskUsage: number }>>({});
+  const [telemetryData, setTelemetryData] = useState<Record<string, { cpuUsage: number; cpuTemp: number; ramUsage: number; diskUsage: number; totalRam?: number; usedRam?: number; totalDisk?: number; usedDisk?: number }>>({});
 
   // Telemetri ve aşırı ısınma durumları
   const overheatingClients = clients.filter(client => {
@@ -70,6 +70,12 @@ function App() {
   const avgCpu = clients.length > 0
     ? Math.round(clients.reduce((acc, c) => acc + (telemetryData[c.id]?.cpuUsage || 0), 0) / clients.length)
     : 0;
+
+  const totalRamAll = clients.reduce((acc, c) => acc + (telemetryData[c.id]?.totalRam ?? 16.0), 0);
+  const totalUsedRam = clients.reduce((acc, c) => acc + (telemetryData[c.id]?.usedRam ?? (16.0 * (telemetryData[c.id]?.ramUsage ?? 0) / 100)), 0);
+
+  const totalDiskAll = clients.reduce((acc, c) => acc + (telemetryData[c.id]?.totalDisk ?? 250.0), 0);
+  const totalUsedDisk = clients.reduce((acc, c) => acc + (telemetryData[c.id]?.usedDisk ?? (250.0 * (telemetryData[c.id]?.diskUsage ?? 0) / 100)), 0);
 
   // Telemetri Verilerini Çekme (Her 4 saniyede bir)
   useEffect(() => {
@@ -1903,25 +1909,21 @@ function App() {
                 <div className="stat-icon-wrapper bg-green">
                   <CheckCircle size={24} color="#10b981" />
                 </div>
-                <div className="stat-value">%
-                  {clients.length > 0
-                    ? Math.round(clients.reduce((acc, c) => acc + (telemetryData[c.id]?.ramUsage || 0), 0) / clients.length)
-                    : 0}
+                <div className="stat-value">
+                  {totalUsedRam.toFixed(2)} GB
                 </div>
-                <div className="stat-label">Ortalama Bellek Yükü</div>
-                <div className="stat-detail">RAM kullanımı</div>
+                <div className="stat-label">Toplam Bellek Kullanımı</div>
+                <div className="stat-detail">Kullanılan / Toplam: {totalUsedRam.toFixed(1)} / {totalRamAll.toFixed(1)} GB</div>
               </div>
               <div className="stat-card">
                 <div className="stat-icon-wrapper bg-purple">
                   <HardDrive size={24} color="#8b5cf6" />
                 </div>
-                <div className="stat-value">%
-                  {clients.length > 0
-                    ? Math.round(clients.reduce((acc, c) => acc + (telemetryData[c.id]?.diskUsage || 0), 0) / clients.length)
-                    : 0}
+                <div className="stat-value">
+                  {totalUsedDisk.toFixed(1)} / {totalDiskAll.toFixed(0)} GB
                 </div>
-                <div className="stat-label">Ortalama Disk Doluluğu</div>
-                <div className="stat-detail">Depolama alanı</div>
+                <div className="stat-label">Laboratuvar Toplam Disk</div>
+                <div className="stat-detail">Kullanılan / Toplam Kapasite</div>
               </div>
             </div>
 
@@ -1944,6 +1946,10 @@ function App() {
                         cpuTemp: typeof rawTel?.cpuTemp === 'number' ? rawTel.cpuTemp : 45,
                         ramUsage: typeof rawTel?.ramUsage === 'number' ? rawTel.ramUsage : 0,
                         diskUsage: typeof rawTel?.diskUsage === 'number' ? rawTel.diskUsage : 0,
+                        totalRam: typeof rawTel?.totalRam === 'number' ? rawTel.totalRam : 16.0,
+                        usedRam: typeof rawTel?.usedRam === 'number' ? rawTel.usedRam : (16.0 * (rawTel?.ramUsage ?? 0) / 100),
+                        totalDisk: typeof rawTel?.totalDisk === 'number' ? rawTel.totalDisk : 250.0,
+                        usedDisk: typeof rawTel?.usedDisk === 'number' ? rawTel.usedDisk : (250.0 * (rawTel?.diskUsage ?? 0) / 100),
                       };
                       const isOverheating = tel.cpuUsage >= 95.0 && tel.cpuTemp >= 75.0;
                       
@@ -2041,11 +2047,13 @@ function App() {
 
                             {/* RAM */}
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: 600 }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontWeight: 600 }}>
                                 <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--color-text-secondary)' }}>
-                                  <CheckCircle size={14} /> Bellek (RAM)
+                                  <CheckCircle size={14} /> RAM
                                 </span>
-                                <span style={{ color: getProgressColor(tel.ramUsage) }}>%{tel.ramUsage.toFixed(1)}</span>
+                                <span style={{ color: getProgressColor(tel.ramUsage) }}>
+                                  {tel.usedRam.toFixed(2)} / {tel.totalRam.toFixed(1)} GB (%{tel.ramUsage.toFixed(0)})
+                                </span>
                               </div>
                               <div style={{ height: '8px', backgroundColor: '#e2e8f0', borderRadius: '4px', overflow: 'hidden' }}>
                                 <div style={{ height: '100%', width: `${tel.ramUsage}%`, backgroundColor: getProgressColor(tel.ramUsage), borderRadius: '4px', transition: 'width 0.5s ease-in-out' }} />
@@ -2054,11 +2062,13 @@ function App() {
 
                             {/* Disk */}
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: 600 }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontWeight: 600 }}>
                                 <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--color-text-secondary)' }}>
-                                  <HardDrive size={14} /> Disk Doluluğu
+                                  <HardDrive size={14} /> Disk
                                 </span>
-                                <span style={{ color: getProgressColor(tel.diskUsage) }}>%{tel.diskUsage.toFixed(1)}</span>
+                                <span style={{ color: getProgressColor(tel.diskUsage) }}>
+                                  {tel.usedDisk.toFixed(1)} / {tel.totalDisk.toFixed(0)} GB (%{tel.diskUsage.toFixed(0)})
+                                </span>
                               </div>
                               <div style={{ height: '8px', backgroundColor: '#e2e8f0', borderRadius: '4px', overflow: 'hidden' }}>
                                 <div style={{ height: '100%', width: `${tel.diskUsage}%`, backgroundColor: getProgressColor(tel.diskUsage), borderRadius: '4px', transition: 'width 0.5s ease-in-out' }} />
