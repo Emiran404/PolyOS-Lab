@@ -169,6 +169,10 @@ type TelemetryData struct {
 	CPUTemp   float64 `json:"cpuTemp"`
 	RAMUsage  float64 `json:"ramUsage"`
 	DiskUsage float64 `json:"diskUsage"`
+	TotalRAM  float64 `json:"totalRam"`
+	UsedRAM   float64 `json:"usedRam"`
+	TotalDisk float64 `json:"totalDisk"`
+	UsedDisk  float64 `json:"usedDisk"`
 }
 
 // Global variables for CPU stat history
@@ -230,14 +234,17 @@ func getCPUTemp() float64 {
 	return 45.0
 }
 
-func getRAMUsage() float64 {
+func getRAMDetails() (float64, float64, float64) {
 	if runtime.GOOS == "darwin" {
-		return 50.0 + float64(time.Now().Unix()%15)
+		total := 16.0
+		used := 8.0 + float64(time.Now().Unix()%4)
+		pct := (used / total) * 100.0
+		return pct, total, used
 	}
 
 	data, err := os.ReadFile("/proc/meminfo")
 	if err != nil {
-		return 0.0
+		return 0.0, 0.0, 0.0
 	}
 
 	var memTotal, memAvailable uint64
@@ -258,35 +265,41 @@ func getRAMUsage() float64 {
 	}
 
 	if memTotal == 0 {
-		return 0.0
+		return 0.0, 0.0, 0.0
 	}
 
 	used := memTotal - memAvailable
-	return float64(used) / float64(memTotal) * 100.0
+	totalGB := float64(memTotal) / 1024 / 1024
+	usedGB := float64(used) / 1024 / 1024
+	pct := (usedGB / totalGB) * 100.0
+	return pct, totalGB, usedGB
 }
 
-func getDiskUsage() float64 {
+func getDiskDetails() (float64, float64, float64) {
 	path := "/"
 	if runtime.GOOS == "windows" {
 		path = "C:\\"
 	}
 	
 	if runtime.GOOS == "darwin" {
-		return 35.0
+		return 35.0, 250.0, 87.5
 	}
 
 	var stat syscall.Statfs_t
 	err := syscall.Statfs(path, &stat)
 	if err != nil {
-		return 0.0
+		return 0.0, 0.0, 0.0
 	}
 	all := stat.Blocks * uint64(stat.Bsize)
 	free := stat.Bfree * uint64(stat.Bsize)
 	used := all - free
 	if all == 0 {
-		return 0.0
+		return 0.0, 0.0, 0.0
 	}
-	return float64(used) / float64(all) * 100.0
+	totalGB := float64(all) / 1024 / 1024 / 1024
+	usedGB := float64(used) / 1024 / 1024 / 1024
+	pct := (usedGB / totalGB) * 100.0
+	return pct, totalGB, usedGB
 }
 
 func setupLogging() {
@@ -1079,11 +1092,17 @@ func main() {
 				case <-done:
 					return
 				case <-time.After(5 * time.Second):
+					ramPct, ramTotal, ramUsed := getRAMDetails()
+					diskPct, diskTotal, diskUsed := getDiskDetails()
 					telData := TelemetryData{
 						CPUUsage:  getCPUUsage(),
 						CPUTemp:   getCPUTemp(),
-						RAMUsage:  getRAMUsage(),
-						DiskUsage: getDiskUsage(),
+						RAMUsage:  ramPct,
+						DiskUsage: diskPct,
+						TotalRAM:  ramTotal,
+						UsedRAM:   ramUsed,
+						TotalDisk: diskTotal,
+						UsedDisk:  diskUsed,
 					}
 					wsMutex.Lock()
 					conn := wsConn
