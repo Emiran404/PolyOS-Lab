@@ -1938,7 +1938,13 @@ function App() {
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                     {clients.map(client => {
-                      const tel = telemetryData[client.id] || { cpuUsage: 0, cpuTemp: 45, ramUsage: 0, diskUsage: 0 };
+                      const rawTel = telemetryData[client.id];
+                      const tel = {
+                        cpuUsage: typeof rawTel?.cpuUsage === 'number' ? rawTel.cpuUsage : 0,
+                        cpuTemp: typeof rawTel?.cpuTemp === 'number' ? rawTel.cpuTemp : 45,
+                        ramUsage: typeof rawTel?.ramUsage === 'number' ? rawTel.ramUsage : 0,
+                        diskUsage: typeof rawTel?.diskUsage === 'number' ? rawTel.diskUsage : 0,
+                      };
                       const isOverheating = tel.cpuUsage >= 95.0 && tel.cpuTemp >= 75.0;
                       
                       const getProgressColor = (val: number) => {
@@ -2202,7 +2208,7 @@ function App() {
                     ⚠️ Kritik Durum: {client.hostname} Aşırı Isınıyor!
                   </strong>
                   <span style={{ color: '#7f1d1d', fontSize: '12px' }}>
-                    Cihaz işlemcisi tam yük altında (%{telemetryData[client.id]?.cpuUsage.toFixed(1)}) ve sıcaklığı tehlikeli seviyede ({telemetryData[client.id]?.cpuTemp.toFixed(1)}°C).
+                    Cihaz işlemcisi tam yük altında (%{(telemetryData[client.id]?.cpuUsage ?? 0).toFixed(1)}) ve sıcaklığı tehlikeli seviyede ({(telemetryData[client.id]?.cpuTemp ?? 0).toFixed(1)}°C).
                   </span>
                 </div>
               </div>
