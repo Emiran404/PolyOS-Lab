@@ -4,9 +4,6 @@
 
 <h1 align="center">🎓 PolyOS Lab</h1>
 
-> [!NOTE]
-> PolyOS Lab bir PolyOS ürünüdür — Pardus Okul Laboratuvar Yönetim ve Ödev Sistemi
-
 
 <p align="center">
   <strong>Eğitim kurumları ve bilgisayar laboratuvarları için modern, güvenli ve anlık yönetim ekosistemi.</strong>
@@ -53,6 +50,10 @@
 Geleneksel ağır ve hantal yönetim araçlarının aksine, Go dilinin sunduğu yerel hız ve eşzamanlılık (concurrency) avantajları ile React/Vite/Electron üçlüsünün esnek arayüz dinamiklerini birleştirir. Özellikle **Pardus (Linux)** işletim sistemine tam uyum sağlamakla birlikte **macOS** üzerinde de simülasyon/geliştirme desteği sunar.
 
 ---
+
+> [!NOTE]
+> PolyOS Lab bir PolyOS ürünüdür — Pardus Okul Laboratuvar Yönetim ve Ödev Sistemi
+
 
 ## ❓ Neden PolyOS Lab?
 
