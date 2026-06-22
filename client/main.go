@@ -664,32 +664,6 @@ func startLockOverlay() {
                     Bu bilgisayar PolyOS Lab politikaları gereği veya öğretmeniniz tarafından kilitlenmiştir.
                 </p>
 </div>
-<div class="w-full bg-surface-container-low rounded-lg p-6 border border-outline-variant/30 flex flex-col gap-4">
-<h2 class="text-label-md font-label-md text-on-surface-variant uppercase tracking-wider mb-2 border-b border-surface-variant pb-2">
-                    Kilit Detayları
-                </h2>
-<div class="flex justify-between items-center">
-<div class="flex items-center gap-3">
-<span class="material-symbols-outlined text-secondary" data-icon="person" style="font-size: 20px;">person</span>
-<span class="text-body-md font-body-md text-on-surface">Öğretmen:</span>
-</div>
-<span class="text-body-md font-body-md font-medium text-primary">Laboratuvar Yöneticisi</span>
-</div>
-<div class="flex justify-between items-center">
-<div class="flex items-center gap-3">
-<span class="material-symbols-outlined text-secondary" data-icon="gavel" style="font-size: 20px;">gavel</span>
-<span class="text-body-md font-body-md text-on-surface">Sebep:</span>
-</div>
-<span class="text-label-md font-label-md px-3 py-1 bg-error/10 text-error rounded-full">Ders Odak Modu</span>
-</div>
-<div class="flex justify-between items-center">
-<div class="flex items-center gap-3">
-<span class="material-symbols-outlined text-secondary" data-icon="schedule" style="font-size: 20px;">schedule</span>
-<span class="text-body-md font-body-md text-on-surface">Zaman:</span>
-</div>
-<span class="text-body-md font-body-md text-secondary" id="currentTime">--:--</span>
-</div>
-</div>
 <div class="mt-stack-lg text-center w-full">
 <p class="text-label-sm font-label-sm text-secondary flex items-center justify-center gap-2">
 <span class="material-symbols-outlined" data-icon="info" style="font-size: 16px;">info</span>
@@ -707,21 +681,6 @@ func startLockOverlay() {
             Developed by Emirhan Gök
         </div>
 </footer>
-<script>
-        function updateTime() {
-            const now = new Date();
-            let hours = now.getHours();
-            let minutes = now.getMinutes();
-            const ampm = hours >= 12 ? 'PM' : 'AM';
-            hours = hours % 12;
-            hours = hours ? hours : 12;
-            minutes = minutes < 10 ? '0' + minutes : minutes;
-            const strTime = hours + ':' + minutes + ' ' + ampm;
-            document.getElementById('currentTime').textContent = strTime;
-        }
-        updateTime();
-        setInterval(updateTime, 60000);
-    </script>
 </body></html>`
 
 	tmpHTML := filepath.Join(os.TempDir(), "polyos_lock.html")
