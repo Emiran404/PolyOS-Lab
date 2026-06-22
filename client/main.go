@@ -1007,6 +1007,8 @@ func main() {
 		if err != nil {
 			log.Println("Bağlantı başarısız, 5 saniye içinde tekrar deneniyor...", err)
 			time.Sleep(5 * time.Second)
+			log.Println("Bağlantı kurulamadı, mDNS ile sunucu tekrar aranıyor...")
+			discoverServer()
 			continue
 		}
 
