@@ -36,6 +36,8 @@ import './App.css';
 interface Client {
   id: string;
   hostname: string;
+  mac?: string;
+  version?: string;
 }
 
 function App() {
@@ -862,7 +864,7 @@ function App() {
                         </div>
                         
                         <div className="client-badge">
-                          Aktif
+                          Aktif {client.version ? `(${client.version})` : '(v1.1.0)'}
                         </div>
 
                         <div className="client-actions">
@@ -1526,6 +1528,7 @@ function App() {
                     <tr style={{ borderBottom: '2px solid var(--color-border)', paddingBottom: '10px' }}>
                       <th style={{ padding: '12px', color: 'var(--color-text-secondary)' }}>Hostname</th>
                       <th style={{ padding: '12px', color: 'var(--color-text-secondary)' }}>Bağlantı ID / IP</th>
+                      <th style={{ padding: '12px', color: 'var(--color-text-secondary)' }}>Sürüm</th>
                       <th style={{ padding: '12px', color: 'var(--color-text-secondary)' }}>Durum</th>
                       <th style={{ padding: '12px', color: 'var(--color-text-secondary)', textAlign: 'right' }}>İşlemler</th>
                     </tr>
@@ -1535,6 +1538,7 @@ function App() {
                       <tr key={client.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
                         <td style={{ padding: '16px 12px', fontWeight: 600 }}>{client.hostname}</td>
                         <td style={{ padding: '16px 12px', color: 'var(--color-text-muted)' }}>{client.id}</td>
+                        <td style={{ padding: '16px 12px', color: 'var(--color-text-muted)' }}>{client.version || 'v1.1.0'}</td>
                         <td style={{ padding: '16px 12px' }}>
                           <span style={{ backgroundColor: '#ecfdf5', color: '#059669', padding: '4px 10px', borderRadius: '20px', fontSize: '12px', fontWeight: 500 }}>Aktif</span>
                         </td>

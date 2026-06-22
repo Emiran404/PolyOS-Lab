@@ -28,6 +28,8 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+const clientVersion = "1.1.4"
+
 var (
 	captureInterval = 2000 * time.Millisecond
 	intervalMutex   sync.Mutex
@@ -509,23 +511,269 @@ func startLockOverlay() {
 		return
 	}
 
-	pyCode := `import tkinter as tk
+	htmlContent := `<!DOCTYPE html>
+<html lang="tr"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Erişim Kısıtlandı</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "secondary-fixed-dim": "#c1c7cf",
+                        "on-surface-variant": "#45474c",
+                        "surface-container-high": "#e8e8e8",
+                        "on-surface": "#1a1c1c",
+                        "background": "#f9f9f9",
+                        "primary-container": "#1e293b",
+                        "on-tertiary-fixed": "#410004",
+                        "on-secondary": "#ffffff",
+                        "tertiary-fixed": "#ffdad7",
+                        "primary": "#091426",
+                        "on-tertiary-fixed-variant": "#930013",
+                        "on-error": "#ffffff",
+                        "surface": "#f9f9f9",
+                        "primary-fixed": "#d8e3fb",
+                        "inverse-on-surface": "#f0f1f1",
+                        "surface-container-low": "#f3f3f4",
+                        "on-secondary-fixed-variant": "#41474e",
+                        "surface-container-highest": "#e2e2e2",
+                        "error-container": "#ffdad6",
+                        "inverse-primary": "#bcc7de",
+                        "outline-variant": "#c5c6cd",
+                        "tertiary": "#330002",
+                        "on-primary-fixed": "#111c2d",
+                        "inverse-surface": "#2f3131",
+                        "tertiary-container": "#5a0008",
+                        "tertiary-fixed-dim": "#ffb3ad",
+                        "on-background": "#1a1c1c",
+                        "secondary": "#595f66",
+                        "on-primary": "#ffffff",
+                        "surface-tint": "#545f73",
+                        "on-secondary-container": "#5f656c",
+                        "secondary-fixed": "#dde3eb",
+                        "surface-variant": "#e2e2e2",
+                        "surface-container": "#eeeeee",
+                        "on-primary-fixed-variant": "#3c475a",
+                        "on-error-container": "#93000a",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-bright": "#f9f9f9",
+                        "on-secondary-fixed": "#161c22",
+                        "on-tertiary": "#ffffff",
+                        "on-primary-container": "#8590a6",
+                        "on-tertiary-container": "#ff5250",
+                        "secondary-container": "#dde3eb",
+                        "error": "#ba1a1a",
+                        "primary-fixed-dim": "#bcc7de",
+                        "surface-dim": "#dadada",
+                        "outline": "#75777d"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "stack-lg": "2rem",
+                        "margin-page": "2rem",
+                        "stack-sm": "0.5rem",
+                        "gutter": "1.5rem",
+                        "container-max-width": "440px",
+                        "stack-md": "1rem",
+                        "unit": "8px"
+                    },
+                    "fontFamily": {
+                        "label-md": ["Inter"],
+                        "headline-lg-mobile": ["Inter"],
+                        "body-md": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "headline-xl": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "label-sm": ["Inter"]
+                    },
+                    "fontSize": {
+                        "label-md": ["14px", { "lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "600" }],
+                        "headline-lg-mobile": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "headline-xl": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }],
+                        "label-sm": ["12px", { "lineHeight": "16px", "fontWeight": "500" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background-color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Inter', sans-serif;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .ambient-shadow {
+            box-shadow: 0 20px 50px rgba(30, 41, 59, 0.08);
+        }
+
+        .glow-effect {
+            box-shadow: 0 0 40px rgba(186, 26, 26, 0.15);
+        }
+        
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        
+        .material-symbols-outlined.filled {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="text-on-surface flex items-center justify-center">
+<header class="flex justify-between items-center w-full px-margin-page py-4 bg-transparent top-0 absolute">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-on-surface-variant filled" data-icon="lock" style="font-size: 20px;">lock</span>
+<span class="text-label-md font-label-md font-bold text-on-surface-variant">PolyOS Lab</span>
+</div>
+<div class="flex gap-4 text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="wifi" style="font-size: 20px;">wifi</span>
+<span class="material-symbols-outlined" data-icon="battery_full" style="font-size: 20px;">battery_full</span>
+</div>
+</header>
+<main class="flex flex-col items-center justify-center p-6 w-full">
+<div class="w-full max-w-container-max-width bg-surface-container-lowest rounded-xl ambient-shadow p-8 flex flex-col items-center border border-surface-variant relative z-10">
+<div class="w-24 h-24 rounded-full bg-error-container glow-effect flex items-center justify-center mb-stack-lg border-4 border-surface-container-lowest shadow-sm z-20">
+<span class="material-symbols-outlined filled text-error" data-icon="lock" style="font-size: 48px;">lock</span>
+</div>
+<div class="text-center w-full mb-stack-lg flex flex-col items-center justify-center">
+<h1 class="text-headline-lg font-headline-lg md:text-headline-xl md:font-headline-xl text-primary mb-stack-sm text-center">
+                    Erişim Kısıtlandı
+                </h1>
+<p class="text-body-md font-body-md text-secondary px-4 text-center">
+                    Bu bilgisayar PolyOS Lab politikaları gereği veya öğretmeniniz tarafından kilitlenmiştir.
+                </p>
+</div>
+<div class="w-full bg-surface-container-low rounded-lg p-6 border border-outline-variant/30 flex flex-col gap-4">
+<h2 class="text-label-md font-label-md text-on-surface-variant uppercase tracking-wider mb-2 border-b border-surface-variant pb-2">
+                    Kilit Detayları
+                </h2>
+<div class="flex justify-between items-center">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-secondary" data-icon="person" style="font-size: 20px;">person</span>
+<span class="text-body-md font-body-md text-on-surface">Öğretmen:</span>
+</div>
+<span class="text-body-md font-body-md font-medium text-primary">Laboratuvar Yöneticisi</span>
+</div>
+<div class="flex justify-between items-center">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-secondary" data-icon="gavel" style="font-size: 20px;">gavel</span>
+<span class="text-body-md font-body-md text-on-surface">Sebep:</span>
+</div>
+<span class="text-label-md font-label-md px-3 py-1 bg-error/10 text-error rounded-full">Ders Odak Modu</span>
+</div>
+<div class="flex justify-between items-center">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-secondary" data-icon="schedule" style="font-size: 20px;">schedule</span>
+<span class="text-body-md font-body-md text-on-surface">Zaman:</span>
+</div>
+<span class="text-body-md font-body-md text-secondary" id="currentTime">--:--</span>
+</div>
+</div>
+<div class="mt-stack-lg text-center w-full">
+<p class="text-label-sm font-label-sm text-secondary flex items-center justify-center gap-2">
+<span class="material-symbols-outlined" data-icon="info" style="font-size: 16px;">info</span>
+                   Kilit açma yetkisi yalnızca öğretmendedir.
+               </p>
+</div>
+</div>
+</main>
+<footer class="fixed bottom-0 w-full flex flex-col items-center pb-8 gap-2 bg-transparent z-0">
+<div class="flex gap-4 mb-2">
+<a class="text-label-sm font-label-sm text-secondary hover:text-primary transition-colors" href="#">Yardım</a>
+<a class="text-label-sm font-label-sm text-secondary hover:text-primary transition-colors" href="#">Güvenlik Bildirimi</a>
+</div>
+<div class="text-label-sm font-label-sm font-medium text-secondary">
+            Developed by Emirhan Gök
+        </div>
+</footer>
+<script>
+        function updateTime() {
+            const now = new Date();
+            let hours = now.getHours();
+            let minutes = now.getMinutes();
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            hours = hours % 12;
+            hours = hours ? hours : 12;
+            minutes = minutes < 10 ? '0' + minutes : minutes;
+            const strTime = hours + ':' + minutes + ' ' + ampm;
+            document.getElementById('currentTime').textContent = strTime;
+        }
+        updateTime();
+        setInterval(updateTime, 60000);
+    </script>
+</body></html>`
+
+	tmpHTML := filepath.Join(os.TempDir(), "polyos_lock.html")
+	_ = os.WriteFile(tmpHTML, []byte(htmlContent), 0644)
+
+	var cmd *exec.Cmd
+	if runtime.GOOS == "darwin" {
+		cmd = exec.Command("open", "-a", "Google Chrome", "--args", "--kiosk", "--user-data-dir=/tmp/polyos_lock_chrome", "--app=file://"+tmpHTML)
+		if err := cmd.Start(); err != nil {
+			cmd = exec.Command("open", tmpHTML)
+			_ = cmd.Start()
+		}
+		lockOverlayCmd = cmd
+	} else {
+		browsers := [][]string{
+			{"chromium-browser", "--kiosk", "--user-data-dir=/tmp/polyos_lock_chrome", "--app=file://" + tmpHTML},
+			{"chromium", "--kiosk", "--user-data-dir=/tmp/polyos_lock_chrome", "--app=file://" + tmpHTML},
+			{"google-chrome", "--kiosk", "--user-data-dir=/tmp/polyos_lock_chrome", "--app=file://" + tmpHTML},
+			{"firefox", "--new-instance", "--profile", "/tmp/polyos_lock_firefox", "--kiosk", "file://" + tmpHTML},
+		}
+
+		for _, b := range browsers {
+			c := exec.Command(b[0], b[1:]...)
+			c.Env = append(os.Environ(), "DISPLAY=:0")
+			if err := c.Start(); err == nil {
+				lockOverlayCmd = c
+				break
+			}
+		}
+
+		if lockOverlayCmd == nil {
+			pyCode := `import tkinter as tk
 root = tk.Tk()
 root.attributes('-fullscreen', True)
-root.configure(bg='#1e293b')
-lbl_icon = tk.Label(root, text="🔒", fg='#ee2b2b', bg='#1e293b', font=('Arial', 82))
+root.configure(bg='white')
+lbl_icon = tk.Label(root, text="🔒", fg='#ba1a1a', bg='white', font=('Arial', 82))
 lbl_icon.pack(expand=True, pady=(150, 10))
-lbl_text = tk.Label(root, text="Bu Bilgisayar Kilitlendi", fg='white', bg='#1e293b', font=('Arial', 32, 'bold'))
+lbl_text = tk.Label(root, text="Erişim Kısıtlandı", fg='#091426', bg='white', font=('Arial', 32, 'bold'))
 lbl_text.pack(expand=True, pady=(10, 10))
-lbl_sub = tk.Label(root, text="Lütfen dersinize ve öğretmeninize odaklanın.", fg='#94a3b8', bg='#1e293b', font=('Arial', 20))
+lbl_sub = tk.Label(root, text="Bu bilgisayar PolyOS Lab politikaları gereği veya öğretmeniniz tarafından kilitlenmiştir.", fg='#595f66', bg='white', font=('Arial', 20))
 lbl_sub.pack(expand=True, pady=(10, 150))
 root.mainloop()
 `
-	tmpFile := filepath.Join(os.TempDir(), "polyos_lock.py")
-	_ = os.WriteFile(tmpFile, []byte(pyCode), 0644)
-
-	lockOverlayCmd = exec.Command("python3", tmpFile)
-	_ = lockOverlayCmd.Start()
+			tmpPy := filepath.Join(os.TempDir(), "polyos_lock.py")
+			_ = os.WriteFile(tmpPy, []byte(pyCode), 0644)
+			c := exec.Command("python3", tmpPy)
+			c.Env = append(os.Environ(), "DISPLAY=:0")
+			if err := c.Start(); err == nil {
+				lockOverlayCmd = c
+			}
+		}
+	}
 }
 
 func stopLockOverlay() {
@@ -537,6 +785,7 @@ func stopLockOverlay() {
 		_ = lockOverlayCmd.Wait()
 		lockOverlayCmd = nil
 	}
+	_ = os.Remove(filepath.Join(os.TempDir(), "polyos_lock.html"))
 	_ = os.Remove(filepath.Join(os.TempDir(), "polyos_lock.py"))
 }
 
@@ -800,13 +1049,9 @@ func runSystemCommand(action string) {
 		case "lock":
 			startLockOverlay()
 			setInputsEnabled(false)
-			runCommandWithLog("xdg-screensaver", "lock")
-			runCommandWithLog("light-locker-command", "-l")
-			runCommandWithLog("loginctl", "lock-session")
 		case "unlock":
 			stopLockOverlay()
 			setInputsEnabled(true)
-			runCommandWithLog("loginctl", "unlock-session")
 		case "sleep":
 			runCommandWithLog("systemctl", "suspend")
 		case "reboot":
@@ -1016,6 +1261,7 @@ func main() {
 		handshake := map[string]string{
 			"hostname": hostname,
 			"mac":      getMACAddress(),
+			"version":  clientVersion,
 		}
 		wsWriteMutex.Lock()
 		err = c.WriteJSON(handshake)

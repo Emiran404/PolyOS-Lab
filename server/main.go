@@ -53,6 +53,7 @@ type Client struct {
 	ID       string
 	Hostname string
 	MAC      string
+	Version  string
 	Conn     *websocket.Conn
 }
 
@@ -121,6 +122,7 @@ func handleWS(w http.ResponseWriter, r *http.Request) {
 	var handshake struct {
 		Hostname string `json:"hostname"`
 		MAC      string `json:"mac"`
+		Version  string `json:"version"`
 	}
 	
 	_, msgBytes, err := conn.ReadMessage()
@@ -144,6 +146,7 @@ func handleWS(w http.ResponseWriter, r *http.Request) {
 		ID:       clientID,
 		Hostname: host,
 		MAC:      handshake.MAC,
+		Version:  handshake.Version,
 		Conn:     conn,
 	}
 
@@ -689,7 +692,7 @@ func getClients(w http.ResponseWriter, r *http.Request) {
 		if !first {
 			w.Write([]byte(`,`))
 		}
-		w.Write([]byte(fmt.Sprintf(`{"id":"%s", "hostname":"%s"}`, id, c.Hostname)))
+		w.Write([]byte(fmt.Sprintf(`{"id":"%s", "hostname":"%s", "mac":"%s", "version":"%s"}`, id, c.Hostname, c.MAC, c.Version)))
 		first = false
 	}
 	w.Write([]byte(`]`))
