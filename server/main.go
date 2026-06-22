@@ -137,7 +137,10 @@ func handleWS(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	clientID := r.RemoteAddr
+	clientID := handshake.MAC
+	if clientID == "" {
+		clientID = r.RemoteAddr
+	}
 	host := handshake.Hostname
 	if host == "" {
 		host = "İstemci-" + clientID

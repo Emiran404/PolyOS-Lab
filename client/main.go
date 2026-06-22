@@ -28,7 +28,7 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-const clientVersion = "1.1.4"
+const clientVersion = "1.1.8"
 
 var (
 	captureInterval = 2000 * time.Millisecond
@@ -498,6 +498,62 @@ func captureScreen() []byte {
 	return bytesData
 }
 
+func getLoggedInGUIUser() string {
+	out, err := exec.Command("logname").Output()
+	if err == nil && len(strings.TrimSpace(string(out))) > 0 {
+		return strings.TrimSpace(string(out))
+	}
+
+	out, err = exec.Command("who").Output()
+	if err == nil {
+		lines := strings.Split(string(out), "\n")
+		for _, line := range lines {
+			fields := strings.Fields(line)
+			if len(fields) >= 2 {
+				for _, f := range fields {
+					if strings.Contains(f, ":0") || strings.Contains(f, "(:0)") {
+						return fields[0]
+					}
+				}
+			}
+		}
+	}
+
+	user := os.Getenv("USER")
+	if user != "" && user != "root" {
+		return user
+	}
+
+	files, err := os.ReadDir("/home")
+	if err == nil {
+		for _, file := range files {
+			if file.IsDir() && file.Name() != "lost+found" {
+				return file.Name()
+			}
+		}
+	}
+
+	return "root"
+}
+
+func runGUICommand(name string, arg ...string) *exec.Cmd {
+	if runtime.GOOS == "darwin" {
+		return exec.Command(name, arg...)
+	}
+
+	user := getLoggedInGUIUser()
+	if user == "root" {
+		c := exec.Command(name, arg...)
+		c.Env = append(os.Environ(), "DISPLAY=:0")
+		return c
+	}
+
+	args := []string{"-u", user, "env", "DISPLAY=:0", name}
+	args = append(args, arg...)
+	c := exec.Command("sudo", args...)
+	return c
+}
+
 var (
 	lockOverlayCmd *exec.Cmd
 	lockMutex      sync.Mutex
@@ -703,8 +759,7 @@ func startLockOverlay() {
 		}
 
 		for _, b := range browsers {
-			c := exec.Command(b[0], b[1:]...)
-			c.Env = append(os.Environ(), "DISPLAY=:0")
+			c := runGUICommand(b[0], b[1:]...)
 			if err := c.Start(); err == nil {
 				lockOverlayCmd = c
 				break
@@ -726,8 +781,7 @@ root.mainloop()
 `
 			tmpPy := filepath.Join(os.TempDir(), "polyos_lock.py")
 			_ = os.WriteFile(tmpPy, []byte(pyCode), 0644)
-			c := exec.Command("python3", tmpPy)
-			c.Env = append(os.Environ(), "DISPLAY=:0")
+			c := runGUICommand("python3", tmpPy)
 			if err := c.Start(); err == nil {
 				lockOverlayCmd = c
 			}
@@ -846,7 +900,7 @@ root.mainloop()
 	tmpFile := filepath.Join(os.TempDir(), "polyos_share_viewer.py")
 	_ = os.WriteFile(tmpFile, []byte(pyCode), 0644)
 
-	screenShareCmd = exec.Command("python3", tmpFile)
+	screenShareCmd = runGUICommand("python3", tmpFile)
 	var err error
 	screenShareWriter, err = screenShareCmd.StdinPipe()
 	if err == nil {
@@ -920,7 +974,8 @@ func runSystemCommand(action string) {
 		if runtime.GOOS == "darwin" {
 			runCommandWithLog("open", url)
 		} else {
-			runCommandWithLog("xdg-open", url)
+			c := runGUICommand("xdg-open", url)
+			_ = c.Run()
 		}
 		return
 	}
@@ -931,11 +986,12 @@ func runSystemCommand(action string) {
 			runCommandWithLog("osascript", "-e", fmt.Sprintf(`display dialog "%s" buttons {"Tamam"} default button "Tamam" with title "PolyOS Lab"`, msg))
 		} else {
 			// Linux/Pardus: zenity or notify-send
-			cmd := exec.Command("zenity", "--info", "--text="+msg, "--title=PolyOS Lab", "--width=350")
-			err := cmd.Run()
+			c := runGUICommand("zenity", "--info", "--text="+msg, "--title=PolyOS Lab", "--width=350")
+			err := c.Run()
 			if err != nil {
 				// Fallback to notify-send
-				runCommandWithLog("notify-send", "PolyOS Lab", msg)
+				c2 := runGUICommand("notify-send", "PolyOS Lab", msg)
+				_ = c2.Run()
 			}
 		}
 		return

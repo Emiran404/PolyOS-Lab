@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/VERSIYON-1.1.4-blue?style=for-the-badge" alt="Versiyon">
+  <img src="https://img.shields.io/badge/VERSIYON-1.1.8-blue?style=for-the-badge" alt="Versiyon">
   <img src="https://img.shields.io/badge/LISANS-MIT-green?style=for-the-badge" alt="Lisans">
   <img src="https://img.shields.io/badge/PLATFORM-PARDUS%20%7C%20MACOS-red?style=for-the-badge" alt="Platform">
 </p>

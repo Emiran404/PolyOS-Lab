@@ -1,44 +1,40 @@
-# PolyOS Lab v1.1.4 - Sürüm Açıklaması
+# PolyOS Lab v1.1.8 - Sürüm Açıklaması
 
-🎉 **PolyOS Lab v1.1.4**
+🎉 **PolyOS Lab v1.1.8**
 
-Bu sürüm, paketlenmiş (production) arayüzde yaşanan beyaz ekran yükleme sorununu düzeltmekte ve istemci tarafındaki bağlantı kopması/sunucu bulma mekanizmasını daha kararlı hale getirmektedir.
+Bu sürüm, Pardus/Linux istemcilerinin root (sudo) yetkileriyle çalışırken yaşadığı X-Server/DISPLAY GUI yetkilendirme sorunlarını çözmekte, uzaktan terminal bağlantısını kararlı hale getirmekte ve yeni HTML kilit ekranını sunmaktadır.
 
 ---
 
 ## 🚀 Yenilikler ve İyileştirmeler
 
-### 🖥️ Arayüz (Dashboard) Beyaz Ekran Hatası Giderildi
-* Vite konfigürasyonuna gömülü relative path (`base: './'`) desteği eklendi.
-* `.deb` paket kurulumlarında (özellikle Pardus) asset yüklenememe ve beyaz ekranda kalma sorunu tamamen çözüldü.
+### 🔑 Sudo (Root) GUI ve Display İzinleri Fixlendi (Pardus / Linux)
+* `sudo go run main.go` veya paketli daemon root olarak çalışırken, GUI arayüzlerinin (`kiosk` kilit ekranı, `xdg-open` ile web sayfası açma, `zenity` bildirim pencereleri vb.) X-Server yetki hatası vermesi engellendi.
+* Go istemcisine grafiksel oturumu açmış aktif kullanıcıyı tespit eden (`getLoggedInGUIUser`) ve GUI süreçlerini bu kullanıcı adına `DISPLAY=:0` yetkisiyle başlatan (`runGUICommand`) yeni bir mekanizma eklendi.
 
-### 🔌 İstemci (Client) Otomatik Yeniden Bağlantı & mDNS Keşfi
-* Bağlantı kesintiye uğradığında istemcinin (Client) sunucuyu mDNS üzerinden otomatik olarak tekrar araması sağlandı.
-* Ağ değişikliklerinde veya sunucu yeniden başlatıldığında istemcilerin manuel müdahale gerekmeden sisteme geri katılması sağlandı.
+### 🔐 HTML Kilit Ekranı & Kilit Detayları Temizliği
+* Gönderilen minimalist ve şık HTML kilit ekranı projenin yerleşik kilit ekranı yapıldı.
+* Kilit ekranı üzerindeki "Kilit Detayları" (Öğretmen, Sebep, Kilit saati vb.) tamamen kaldırılarak daha temiz ve doğrudan bir tasarım sağlandı.
+* Sistem genelindeki `xdg-screensaver` ve `loginctl` gibi oturum kilitleme komutları kaldırılarak, yalnızca girdi aygıtlarının kilitlenmesi ve kiosk ekranı ile kilit yönetiminin kararlı çalışması sağlandı.
 
----
-
-## 🔧 Hata Düzeltmeleri ve İyileştirmeler
-* Electron production paket yapısı optimize edildi.
-* Loglama ve hata yakalama mekanizmaları iyileştirildi.
+### 🔌 Kararlı Uzaktan Terminal & Yeniden Bağlantılar (Stable Client IDs)
+* Sunucu tarafında istemcilerin dinamik IP/Port yerine kalıcı **MAC Adresi** (`handshake.MAC`) ile haritalandırılması sağlandı.
+* Bu sayede istemcilerin bağlantısı kopup yeni bir portla bağlandıklarında uzaktan terminal, ekran paylaşımı ve kontrol seanslarının kesintiye uğramadan devam etmesi sağlandı.
 
 ---
 
 ## 📦 Kurulum ve Çalıştırma
 
-Platformunuza uygun çalıştırılabilir dosyaları derlemek ve başlatmak için aşağıdaki yönergeleri izleyebilirsiniz:
-
-1. **Sunucu Tarafı:**
+1. **Sunucu:**
    ```bash
    cd server
-   go build -o server_bin main.go
-   ./server_bin -port 8080 -token polyos-secure-token
+   go run main.go
    ```
 2. **Dashboard (Arayüz):**
    ```bash
    cd dashboard
    npm install
-   npm run electron:build
+   npm run electron:dev
    ```
 3. **İstemci (Pardus / Linux Cihazlar):**
    ```bash
