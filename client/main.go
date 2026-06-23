@@ -1001,7 +1001,21 @@ func runSystemCommand(action string) {
 		if runtime.GOOS == "darwin" {
 			runCommandWithLog("networksetup", "-setnetworkserviceenabled", "Wi-Fi", "off")
 		} else {
-			runCommandWithLog("nmcli", "networking", "off")
+			// Create custom POLYOS_BLOCK chain and reject non-local traffic
+			_ = exec.Command("iptables", "-N", "POLYOS_BLOCK").Run()
+			_ = exec.Command("iptables", "-F", "POLYOS_BLOCK").Run()
+			_ = exec.Command("iptables", "-A", "POLYOS_BLOCK", "-o", "lo", "-j", "ACCEPT").Run()
+			_ = exec.Command("iptables", "-A", "POLYOS_BLOCK", "-d", "192.168.0.0/16", "-j", "ACCEPT").Run()
+			_ = exec.Command("iptables", "-A", "POLYOS_BLOCK", "-d", "10.0.0.0/8", "-j", "ACCEPT").Run()
+			_ = exec.Command("iptables", "-A", "POLYOS_BLOCK", "-d", "172.16.0.0/12", "-j", "ACCEPT").Run()
+			_ = exec.Command("iptables", "-A", "POLYOS_BLOCK", "-j", "REJECT").Run()
+			
+			// Insert POLYOS_BLOCK jump rule to OUTPUT if not already there
+			err := exec.Command("iptables", "-C", "OUTPUT", "-j", "POLYOS_BLOCK").Run()
+			if err != nil {
+				_ = exec.Command("iptables", "-I", "OUTPUT", "1", "-j", "POLYOS_BLOCK").Run()
+			}
+			log.Println("İnternet kısıtlandı (POLYOS_BLOCK aktif). Yerel ağ bağlantısı korundu.")
 		}
 		return
 	}
@@ -1010,7 +1024,11 @@ func runSystemCommand(action string) {
 		if runtime.GOOS == "darwin" {
 			runCommandWithLog("networksetup", "-setnetworkserviceenabled", "Wi-Fi", "on")
 		} else {
-			runCommandWithLog("nmcli", "networking", "on")
+			// Tear down POLYOS_BLOCK chain and re-enable internet
+			_ = exec.Command("iptables", "-D", "OUTPUT", "-j", "POLYOS_BLOCK").Run()
+			_ = exec.Command("iptables", "-F", "POLYOS_BLOCK").Run()
+			_ = exec.Command("iptables", "-X", "POLYOS_BLOCK").Run()
+			log.Println("İnternet kısıtlaması kaldırıldı (POLYOS_BLOCK silindi).")
 		}
 		return
 	}
