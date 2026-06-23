@@ -40,6 +40,11 @@ interface Client {
   version?: string;
 }
 
+let lastRxBytes = 0;
+let lastTxBytes = 0;
+let lastTime = Date.now();
+let pingHistory: Array<{ success: boolean; latency: number }> = [];
+
 function App() {
   const [clients, setClients] = useState<Client[]>([]);
   const [activeTab, setActiveTab] = useState('summary');
@@ -231,32 +236,156 @@ function App() {
     localStorage.setItem('forbiddenWebsites', JSON.stringify(forbiddenWebsites));
   }, [forbiddenWebsites]);
 
-  // Telemetri Canlı Veri Simülasyonu
+  // Gerçek Ağ Telemetrisi Canlı Veri Ölçümü
   useEffect(() => {
     if (activeTab !== 'network_management') return;
-    const interval = setInterval(() => {
-      setTelemetry(prev => {
-        if (internetStatus === 'disabled') {
+
+    const childProcess = (window as any).require ? (window as any).require('child_process') : null;
+    const fs = (window as any).require ? (window as any).require('fs') : null;
+
+    if (!childProcess || !fs) {
+      console.warn("Node.js runtime not available in browser. Using simulated telemetry.");
+      const interval = setInterval(() => {
+        setTelemetry(prev => {
+          if (internetStatus === 'disabled') {
+            return { download: 0.0, upload: 0.0, latency: 999, packetLoss: 100.0, jitter: 0.0 };
+          }
+          const deltaDown = (Math.random() - 0.5) * 8;
+          const deltaUp = (Math.random() - 0.5) * 3;
+          const deltaLat = (Math.random() - 0.5) * 2;
           return {
-            download: 0.0,
-            upload: 0.0,
-            latency: 999,
-            packetLoss: 100.0,
-            jitter: 0.0
+            download: Math.max(10, Math.min(250, Number((prev.download + deltaDown).toFixed(1)))),
+            upload: Math.max(5, Math.min(80, Number((prev.upload + deltaUp).toFixed(1)))),
+            latency: Math.max(5, Math.min(45, Math.round(prev.latency + deltaLat))),
+            packetLoss: Math.max(0.0, Math.min(1.5, Number((prev.packetLoss + (Math.random() - 0.5) * 0.05).toFixed(2)))),
+            jitter: Math.max(0.5, Math.min(5.0, Number((prev.jitter + (Math.random() - 0.5) * 0.2).toFixed(1))))
           };
+        });
+      }, 1500);
+      return () => clearInterval(interval);
+    }
+
+    const getLinuxNetworkBytes = () => {
+      try {
+        const data = fs.readFileSync('/proc/net/dev', 'utf8');
+        const lines = data.split('\n');
+        let rxBytes = 0;
+        let txBytes = 0;
+        for (const line of lines) {
+          if (line.includes(':')) {
+            const parts = line.split(':')[1].trim().split(/\s+/);
+            rxBytes += parseInt(parts[0], 10) || 0;
+            txBytes += parseInt(parts[8], 10) || 0;
+          }
         }
-        const deltaDown = (Math.random() - 0.5) * 8;
-        const deltaUp = (Math.random() - 0.5) * 3;
-        const deltaLat = (Math.random() - 0.5) * 2;
-        return {
-          download: Math.max(10, Math.min(250, Number((prev.download + deltaDown).toFixed(1)))),
-          upload: Math.max(5, Math.min(80, Number((prev.upload + deltaUp).toFixed(1)))),
-          latency: Math.max(5, Math.min(45, Math.round(prev.latency + deltaLat))),
-          packetLoss: Math.max(0.0, Math.min(1.5, Number((prev.packetLoss + (Math.random() - 0.5) * 0.05).toFixed(2)))),
-          jitter: Math.max(0.5, Math.min(5.0, Number((prev.jitter + (Math.random() - 0.5) * 0.2).toFixed(1))))
-        };
+        return { rxBytes, txBytes };
+      } catch (e) {
+        return { rxBytes: 0, txBytes: 0 };
+      }
+    };
+
+    const getMacNetworkBytes = () => {
+      try {
+        const out = childProcess.execSync('netstat -ib').toString();
+        const lines = out.split('\n');
+        let rxBytes = 0;
+        let txBytes = 0;
+        for (const line of lines) {
+          const parts = line.trim().split(/\s+/);
+          if (parts.length >= 10 && (parts[0].startsWith('en') || parts[0].startsWith('wlan'))) {
+            const ibytes = parseInt(parts[6], 10);
+            const obytes = parseInt(parts[9], 10);
+            if (!isNaN(ibytes)) rxBytes += ibytes;
+            if (!isNaN(obytes)) txBytes += obytes;
+          }
+        }
+        return { rxBytes, txBytes };
+      } catch (e) {
+        return { rxBytes: 0, txBytes: 0 };
+      }
+    };
+
+    const updateStats = () => {
+      if (internetStatus === 'disabled') {
+        setTelemetry({ download: 0.0, upload: 0.0, latency: 999, packetLoss: 100.0, jitter: 0.0 });
+        return;
+      }
+
+      const isLinux = window.process && window.process.platform === 'linux';
+      const stats = isLinux ? getLinuxNetworkBytes() : getMacNetworkBytes();
+      const now = Date.now();
+      const timeDiffSec = (now - lastTime) / 1000;
+      
+      let rxSpeedMbps = 0.0;
+      let txSpeedMbps = 0.0;
+
+      if (timeDiffSec > 0) {
+        if (lastRxBytes > 0 && stats.rxBytes >= lastRxBytes) {
+          const rxDiffBytes = stats.rxBytes - lastRxBytes;
+          rxSpeedMbps = (rxDiffBytes * 8) / 1000 / 1000 / timeDiffSec;
+        }
+        if (lastTxBytes > 0 && stats.txBytes >= lastTxBytes) {
+          const txDiffBytes = stats.txBytes - lastTxBytes;
+          txSpeedMbps = (txDiffBytes * 8) / 1000 / 1000 / timeDiffSec;
+        }
+      }
+
+      lastRxBytes = stats.rxBytes;
+      lastTxBytes = stats.txBytes;
+      lastTime = now;
+
+      const cmd = window.process && window.process.platform === 'win32'
+        ? 'ping -n 1 -w 1000 8.8.8.8'
+        : 'ping -c 1 -W 1 8.8.8.8';
+
+      childProcess.exec(cmd, (err: any, stdout: string) => {
+        let latency = 0;
+        let success = false;
+
+        if (!err) {
+          const match = stdout.match(/time=([\d.]+)\s*ms/);
+          if (match && match[1]) {
+            latency = parseFloat(match[1]);
+            success = true;
+          }
+        }
+
+        pingHistory.push({ success, latency });
+        if (pingHistory.length > 10) {
+          pingHistory.shift();
+        }
+
+        const successfulPings = pingHistory.filter(p => p.success);
+        const packetLoss = ((pingHistory.length - successfulPings.length) / pingHistory.length) * 100;
+
+        let avgLatency = 12.0;
+        let jitter = 1.0;
+
+        if (successfulPings.length > 0) {
+          const sum = successfulPings.reduce((acc, p) => acc + p.latency, 0);
+          avgLatency = sum / successfulPings.length;
+
+          if (successfulPings.length > 1) {
+            let diffSum = 0;
+            for (let i = 1; i < successfulPings.length; i++) {
+              diffSum += Math.abs(successfulPings[i].latency - successfulPings[i - 1].latency);
+            }
+            jitter = diffSum / (successfulPings.length - 1);
+          }
+        }
+
+        setTelemetry({
+          download: Number(rxSpeedMbps.toFixed(1)),
+          upload: Number(txSpeedMbps.toFixed(1)),
+          latency: Math.round(avgLatency),
+          packetLoss: Number(packetLoss.toFixed(1)),
+          jitter: Number(jitter.toFixed(1))
+        });
       });
-    }, 1500);
+    };
+
+    updateStats();
+    const interval = setInterval(updateStats, 2000);
     return () => clearInterval(interval);
   }, [activeTab, internetStatus]);
 
