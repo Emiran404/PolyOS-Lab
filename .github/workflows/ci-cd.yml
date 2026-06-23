@@ -155,39 +155,16 @@ jobs:
           
           dpkg-deb --build $PKG_DIR
 
-      # 5. Create Release Notes (releases.txt)
-      - name: Generate Release Notes
-        run: |
-          cat <<EOF > releases.txt
-          PolyOS Lab - Sürüm Bilgileri (${{ env.tag_name }})
-          Tarih: $(date +'%Y-%m-%d %H:%M:%S')
-          
-          Değişiklikler:
-          - Canlı Öğrenci Ekranı İzleme ve Uzaktan Kontrol eklendi.
-          - Wake-on-LAN (PolyOS Wake) ile çevrimdışı bilgisayarları uyandırma eklendi.
-          - Çekirdek modülü seviyesinde USB Engelleme desteği eklendi.
-          - Tkinter tabanlı aşılmaz Kilit Ekranı uyarısı ("Bu Bilgisayar Kilitlendi") entegre edildi.
-          - Cihazları uzaktan uyku moduna alma (sleep/suspend) özelliği eklendi.
-          - Öğretmen ekranını öğrencilere yansıtma (Screen Share) özelliği eklendi.
-          - İstemci (client) için otomatik başlatma (Systemd daemon) entegre edildi.
-          - Öğretmen paneli (dashboard) için gömülü/entegre sunucu entegrasyonu tamamlandı.
-          
-          Yüklenen Paketler (.deb):
-          1. polyos-lab-dashboard (Öğretmen Paneli)
-          2. polyos-server (Merkezi Sunucu)
-          3. polyos-client (Öğrenci İstemcisi)
-          EOF
-
-      # 6. Upload Assets and Create/Update Release
+      # 5. Upload Assets and Create/Update Release
       - name: Release Assets
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.tag_name }}
-          body_path: releases.txt
+          body_path: RELEASE_NOTES.md
           files: |
             dashboard/release/*.deb
             polyos-server_${{ env.version_num }}_amd64.deb
             polyos-client_${{ env.version_num }}_amd64.deb
-            releases.txt
+            RELEASE_NOTES.md
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
