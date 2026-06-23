@@ -311,7 +311,7 @@ function App() {
         return;
       }
 
-      const isLinux = window.process && window.process.platform === 'linux';
+      const isLinux = (window as any).process && (window as any).process.platform === 'linux';
       const stats = isLinux ? getLinuxNetworkBytes() : getMacNetworkBytes();
       const now = Date.now();
       const timeDiffSec = (now - lastTime) / 1000;
@@ -334,7 +334,7 @@ function App() {
       lastTxBytes = stats.txBytes;
       lastTime = now;
 
-      const cmd = window.process && window.process.platform === 'win32'
+      const cmd = (window as any).process && (window as any).process.platform === 'win32'
         ? 'ping -n 1 -w 1000 8.8.8.8'
         : 'ping -c 1 -W 1 8.8.8.8';
 
