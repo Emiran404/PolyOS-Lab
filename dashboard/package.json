@@ -1,7 +1,7 @@
 {
   "name": "dashboard",
   "private": true,
-  "version": "1.1.8",
+  "version": "1.2.0",
   "description": "PolyOS Lab Teacher Dashboard",
   "author": "Emirhan Gok <emiran404@github.com>",
   "repository": {

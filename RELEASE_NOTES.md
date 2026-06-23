@@ -1,25 +1,26 @@
-# PolyOS Lab v1.1.8 - Sürüm Açıklaması
+# PolyOS Lab v1.2.0 - Sürüm Açıklaması
 
-🎉 **PolyOS Lab v1.1.8**
+🎉 **PolyOS Lab v1.2.0**
 
-Bu sürüm, Pardus/Linux istemcilerinin root (sudo) yetkileriyle çalışırken yaşadığı X-Server/DISPLAY GUI yetkilendirme sorunlarını çözmekte, uzaktan terminal bağlantısını kararlı hale getirmekte ve yeni HTML kilit ekranını sunmaktadır.
+Bu sürüm, yerel ağ dostu güvenli internet engelleme (iptables sandbox), gerçek zamanlı sistem ağ telemetrisi (throughput & ping), geliştirici modu düzenlemeleri ve kararlılık iyileştirmelerini içermektedir.
 
 ---
 
 ## 🚀 Yenilikler ve İyileştirmeler
 
-### 🔑 Sudo (Root) GUI ve Display İzinleri Fixlendi (Pardus / Linux)
-* `sudo go run main.go` veya paketli daemon root olarak çalışırken, GUI arayüzlerinin (`kiosk` kilit ekranı, `xdg-open` ile web sayfası açma, `zenity` bildirim pencereleri vb.) X-Server yetki hatası vermesi engellendi.
-* Go istemcisine grafiksel oturumu açmış aktif kullanıcıyı tespit eden (`getLoggedInGUIUser`) ve GUI süreçlerini bu kullanıcı adına `DISPLAY=:0` yetkisiyle başlatan (`runGUICommand`) yeni bir mekanizma eklendi.
+### 🛡️ Güvenli & Kesintisiz İnternet Engelleme (Linux / Pardus)
+* **Yerel Ağ Bağlantısı Korundu:** `internet_off` komutu çalıştırıldığında istemcinin ağ kartlarını tamamen kapatmak yerine, Linux `iptables` üzerinde özel bir `POLYOS_BLOCK` zinciri kurulması sağlandı.
+* Bu zincir; yerel ağ trafiğini (`127.0.0.1`, `192.168.0.0/16`, `10.0.0.0/8`, `172.16.0.0/12`) etkilemeden geçişe izin verirken dış dünyaya olan internet çıkışını engeller.
+* Böylece öğrenci bilgisayarının interneti kesilse dahi öğretmen/merkezi sunucu ile bağlantısı kopmaz ve öğretmen "İnternet Erişimi AÇ" dediğinde bu komut sorunsuz alınarak internet anında geri açılabilir.
 
-### 🔐 HTML Kilit Ekranı & Kilit Detayları Temizliği
-* Gönderilen minimalist ve şık HTML kilit ekranı projenin yerleşik kilit ekranı yapıldı.
-* Kilit ekranı üzerindeki "Kilit Detayları" (Öğretmen, Sebep, Kilit saati vb.) tamamen kaldırılarak daha temiz ve doğrudan bir tasarım sağlandı.
-* Sistem genelindeki `xdg-screensaver` ve `loginctl` gibi oturum kilitleme komutları kaldırılarak, yalnızca girdi aygıtlarının kilitlenmesi ve kiosk ekranı ile kilit yönetiminin kararlı çalışması sağlandı.
+### 📊 Gerçek Zamanlı Ağ Telemetrisi & Performans Ölçümü
+* Dashboard üzerindeki simüle edilmiş (mock) ağ verileri kaldırılıp yerine **gerçek zamanlı ağ ölçüm motoru** entegre edildi.
+* **Download / Upload Trafik Akışı:** İşletim sisteminin ağ kartlarındaki (Network Interfaces) veri akış hızı (Throughput) hesaplanarak anlık Mbps olarak gösterilir.
+* **Latency, Packet Loss & Jitter:** Arka planda çalıştırılan hafif ping sorguları ile ağın gerçek gecikme süresi, paket kaybı yüzdesi ve jitter değeri anlık olarak hesaplanır.
 
-### 🔌 Kararlı Uzaktan Terminal & Yeniden Bağlantılar (Stable Client IDs)
-* Sunucu tarafında istemcilerin dinamik IP/Port yerine kalıcı **MAC Adresi** (`handshake.MAC`) ile haritalandırılması sağlandı.
-* Bu sayede istemcilerin bağlantısı kopup yeni bir portla bağlandıklarında uzaktan terminal, ekran paylaşımı ve kontrol seanslarının kesintiye uğramadan devam etmesi sağlandı.
+### ⚙️ Electron & Geliştirici Modu İyileştirmeleri
+* Dashboard uygulamasının geliştirici modunda (`npm run electron:dev`) başlarken DevTools (Geliştirici Araçları) penceresinin otomatik olarak açılması engellendi.
+* TypeScript derleme (tsc build) aşamasındaki `window.process` tip kontrolü hatası (error TS2339) giderilerek derleme kararlı hale getirildi.
 
 ---
 
