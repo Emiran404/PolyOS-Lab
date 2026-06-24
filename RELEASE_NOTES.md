@@ -1,25 +1,22 @@
-# PolyOS Lab v1.3.1 - Sürüm Açıklaması
+# PolyOS Lab v1.3.2 - Sürüm Açıklaması
 
-🎉 **PolyOS Lab v1.3.1**
+🎉 **PolyOS Lab v1.3.2**
 
-Bu sürüm, Pardus (Linux) istemcilerindeki ekran kilitleme ve ekran yansıtma kararlılık iyileştirmelerini, gerçek ağ trafik grafik entegrasyonunu ve yönlendirici uyarılarını içermektedir.
+Bu sürüm; internet kısıtlamaları sırasında istemcilerin kopması, kilit ekranındaki CSS/CDN bağımlılığı kaynaklı görsel bozulmalar ve Firefox tarayıcı entegrasyonu önceliği gibi kritik kararlılık hataları için düzeltmeler içerir.
 
 ---
 
 ## 🚀 Yenilikler ve İyileştirmeler
 
-### 🔒 Pardus (Linux) Ekran Kilitleme Düzeltmesi
-* **X11 Yetkilendirme Çözümü:** İstemcinin `root` yetkileriyle çalışırken kullanıcı ekranına kilit (HTML) arayüzünü getirememesi sorunu, aktif oturumun `.Xauthority` dosyasının dinamik olarak bulunup komuta `XAUTHORITY` çevre değişkeniyle aktarılmasıyla çözüldü.
+### 🔒 İnternet Kısıtlaması & Çevrimiçi Kalma Garantisi
+* **Dinamik Sunucu IP Beyaz Listesi (Whitelist):** İnternet engellendiğinde istemcinin dashboard ile olan bağlantısının kesilmesi ve ağdan düşmesi engellendi. `iptables` kısıtlama zincirine (`POLYOS_BLOCK`) öğretmen bilgisayarının güncel IP adresi dinamik olarak whiteliste eklenerek kesintisiz yerel ağ iletişimi sağlandı.
 
-### 🖥️ Ekran Yansıtma & Tam Ekran Kararlılığı
-* **Tam Ekran Kaplama (Fix):** Ekran yansıtma sırasında Tkinter penceresinin bazı X11 pencere yöneticilerinde yarım veya küçük kalması engellendi. Ekran çözünürlüğü dinamik tespit edilerek tam ekran geometrisi zorlandı.
-* **Girişlerin Kilitlenmesi:** Ekran yansıtılırken istemcilerin klavye ve fare girişlerinin `xinput` seviyesinde başarıyla kilitlenmesi sağlandı.
+### 🎨 Çevrimdışı Kilit Ekranı Arayüzü (Lock Screen CSS Fix)
+* **Sıfır Ağ Bağımlılığı:** İnternet kısıtlandığında Tailwind CSS ve Material Symbols CDN'lerinin yüklenememesinden ötürü kilit ekranındaki tasarımın bozulması engellendi.
+* Arayüz tamamen **saf CSS (Vanilla CSS)** ve **inline SVG** ikonlar kullanılarak internet bağlantısına ihtiyaç duymayan, şık ve kendi kendine yeten (self-contained) bir yapıya dönüştürüldü.
 
-### 📊 Gerçek Zamanlı Ağ Trafik Akış Grafiği
-* Grafik arayüzündeki yapay (random) ağ grafik dalgalanması kaldırılarak, **gerçek zamanlı download ve upload hız verilerine** bağlandı.
-
-### ⚡ PolyOS Wake (WOL) Rehber Uyarı
-* Wake-on-LAN ekranına, bu özelliğin çalışabilmesi için cihazların BIOS/Anakart ayarlarında WOL özelliğinin açık olması ve kablolu ağa bağlı olması gerektiğini bildiren şık bir uyarı bandı eklendi.
+### 🌐 Firefox Tarayıcı Önceliği
+* Pardus (Linux) istemcilerde varsayılan olarak kurulu gelen **Firefox**, Ekran Kilitleme ve Ekran Paylaşımı (Screen Share) işlemlerinde birinci öncelikli (index 0) tarayıcı olarak ayarlandı. Firefox ile başlayıp başarısız olunması durumunda Chromium türevlerine geçiş yapılacaktır.
 
 ---
 
