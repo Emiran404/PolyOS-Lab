@@ -536,19 +536,73 @@ func getLoggedInGUIUser() string {
 	return "root"
 }
 
+func getXAuthorityPath(user string) string {
+	// 1. Try home directory
+	if user != "" && user != "root" {
+		homePath := filepath.Join("/home", user, ".Xauthority")
+		if _, err := os.Stat(homePath); err == nil {
+			return homePath
+		}
+	}
+
+	// 2. Try current process's environment variable
+	if envXauth := os.Getenv("XAUTHORITY"); envXauth != "" {
+		if _, err := os.Stat(envXauth); err == nil {
+			return envXauth
+		}
+	}
+
+	// 3. Try LightDM fallback
+	lightdmPath := "/var/run/lightdm/root/:0"
+	if _, err := os.Stat(lightdmPath); err == nil {
+		return lightdmPath
+	}
+
+	// 4. Try GDM/other display manager fallbacks under /run/user/<UID>/gdm/Xauthority
+	if files, err := os.ReadDir("/run/user"); err == nil {
+		for _, file := range files {
+			if file.IsDir() {
+				gdmPath := filepath.Join("/run/user", file.Name(), "gdm", "Xauthority")
+				if _, err := os.Stat(gdmPath); err == nil {
+					return gdmPath
+				}
+			}
+		}
+	}
+
+	// Fallback to user's home .Xauthority path
+	if user != "" && user != "root" {
+		return filepath.Join("/home", user, ".Xauthority")
+	}
+	return ""
+}
+
 func runGUICommand(name string, arg ...string) *exec.Cmd {
 	if runtime.GOOS == "darwin" {
 		return exec.Command(name, arg...)
 	}
 
 	user := getLoggedInGUIUser()
+	xauth := getXAuthorityPath(user)
+
 	if user == "root" {
 		c := exec.Command(name, arg...)
-		c.Env = append(os.Environ(), "DISPLAY=:0")
+		env := append(os.Environ(), "DISPLAY=:0")
+		if xauth != "" {
+			env = append(env, "XAUTHORITY="+xauth)
+		}
+		c.Env = env
 		return c
 	}
 
-	args := []string{"-u", user, "env", "DISPLAY=:0", name}
+	envArgs := []string{"DISPLAY=:0"}
+	if xauth != "" {
+		envArgs = append(envArgs, "XAUTHORITY="+xauth)
+	}
+
+	args := []string{"-u", user, "env"}
+	args = append(args, envArgs...)
+	args = append(args, name)
 	args = append(args, arg...)
 	c := exec.Command("sudo", args...)
 	return c
@@ -811,11 +865,26 @@ func setInputsEnabled(enabled bool) {
 	if enabled {
 		val = "1"
 	}
-	out, err := exec.Command("xinput", "list", "--id-only").Output()
+
+	user := getLoggedInGUIUser()
+	xauth := getXAuthorityPath(user)
+
+	cmdList := exec.Command("xinput", "list", "--id-only")
+	cmdList.Env = append(os.Environ(), "DISPLAY=:0")
+	if xauth != "" {
+		cmdList.Env = append(cmdList.Env, "XAUTHORITY="+xauth)
+	}
+
+	out, err := cmdList.Output()
 	if err == nil {
 		ids := strings.Fields(string(out))
 		for _, id := range ids {
-			_ = exec.Command("xinput", "set-prop", id, "Device Enabled", val).Run()
+			cmdSet := exec.Command("xinput", "set-prop", id, "Device Enabled", val)
+			cmdSet.Env = append(os.Environ(), "DISPLAY=:0")
+			if xauth != "" {
+				cmdSet.Env = append(cmdSet.Env, "XAUTHORITY="+xauth)
+			}
+			_ = cmdSet.Run()
 		}
 	}
 }
@@ -863,10 +932,16 @@ func startScreenShareViewer() {
 import tkinter as tk
 
 root = tk.Tk()
-root.attributes('-fullscreen', True)
-root.attributes('-topmost', True)
-root.overrideredirect(True)
 root.configure(bg='black')
+
+# Force true fullscreen overlay for X11 / window managers on Pardus
+w = root.winfo_screenwidth()
+h = root.winfo_screenheight()
+root.geometry(f"{w}x{h}+0+0")
+root.overrideredirect(True)
+root.attributes('-topmost', True)
+root.lift()
+root.focus_force()
 
 try:
     root.grab_set_global()

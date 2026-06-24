@@ -1,26 +1,25 @@
-# PolyOS Lab v1.2.0 - Sürüm Açıklaması
+# PolyOS Lab v1.2.7 - Sürüm Açıklaması
 
-🎉 **PolyOS Lab v1.2.0**
+🎉 **PolyOS Lab v1.2.7**
 
-Bu sürüm, yerel ağ dostu güvenli internet engelleme (iptables sandbox), gerçek zamanlı sistem ağ telemetrisi (throughput & ping), geliştirici modu düzenlemeleri ve kararlılık iyileştirmelerini içermektedir.
+Bu sürüm, Pardus (Linux) istemcilerindeki ekran kilitleme ve ekran yansıtma kararlılık iyileştirmelerini, gerçek ağ trafik grafik entegrasyonunu ve yönlendirici uyarılarını içermektedir.
 
 ---
 
 ## 🚀 Yenilikler ve İyileştirmeler
 
-### 🛡️ Güvenli & Kesintisiz İnternet Engelleme (Linux / Pardus)
-* **Yerel Ağ Bağlantısı Korundu:** `internet_off` komutu çalıştırıldığında istemcinin ağ kartlarını tamamen kapatmak yerine, Linux `iptables` üzerinde özel bir `POLYOS_BLOCK` zinciri kurulması sağlandı.
-* Bu zincir; yerel ağ trafiğini (`127.0.0.1`, `192.168.0.0/16`, `10.0.0.0/8`, `172.16.0.0/12`) etkilemeden geçişe izin verirken dış dünyaya olan internet çıkışını engeller.
-* Böylece öğrenci bilgisayarının interneti kesilse dahi öğretmen/merkezi sunucu ile bağlantısı kopmaz ve öğretmen "İnternet Erişimi AÇ" dediğinde bu komut sorunsuz alınarak internet anında geri açılabilir.
+### 🔒 Pardus (Linux) Ekran Kilitleme Düzeltmesi
+* **X11 Yetkilendirme Çözümü:** İstemcinin `root` yetkileriyle çalışırken kullanıcı ekranına kilit (HTML) arayüzünü getirememesi sorunu, aktif oturumun `.Xauthority` dosyasının dinamik olarak bulunup komuta `XAUTHORITY` çevre değişkeniyle aktarılmasıyla çözüldü.
 
-### 📊 Gerçek Zamanlı Ağ Telemetrisi & Performans Ölçümü
-* Dashboard üzerindeki simüle edilmiş (mock) ağ verileri kaldırılıp yerine **gerçek zamanlı ağ ölçüm motoru** entegre edildi.
-* **Download / Upload Trafik Akışı:** İşletim sisteminin ağ kartlarındaki (Network Interfaces) veri akış hızı (Throughput) hesaplanarak anlık Mbps olarak gösterilir.
-* **Latency, Packet Loss & Jitter:** Arka planda çalıştırılan hafif ping sorguları ile ağın gerçek gecikme süresi, paket kaybı yüzdesi ve jitter değeri anlık olarak hesaplanır.
+### 🖥️ Ekran Yansıtma & Tam Ekran Kararlılığı
+* **Tam Ekran Kaplama (Fix):** Ekran yansıtma sırasında Tkinter penceresinin bazı X11 pencere yöneticilerinde yarım veya küçük kalması engellendi. Ekran çözünürlüğü dinamik tespit edilerek tam ekran geometrisi zorlandı.
+* **Girişlerin Kilitlenmesi:** Ekran yansıtılırken istemcilerin klavye ve fare girişlerinin `xinput` seviyesinde başarıyla kilitlenmesi sağlandı.
 
-### ⚙️ Electron & Geliştirici Modu İyileştirmeleri
-* Dashboard uygulamasının geliştirici modunda (`npm run electron:dev`) başlarken DevTools (Geliştirici Araçları) penceresinin otomatik olarak açılması engellendi.
-* TypeScript derleme (tsc build) aşamasındaki `window.process` tip kontrolü hatası (error TS2339) giderilerek derleme kararlı hale getirildi.
+### 📊 Gerçek Zamanlı Ağ Trafik Akış Grafiği
+* Grafik arayüzündeki yapay (random) ağ grafik dalgalanması kaldırılarak, **gerçek zamanlı download ve upload hız verilerine** bağlandı.
+
+### ⚡ PolyOS Wake (WOL) Rehber Uyarı
+* Wake-on-LAN ekranına, bu özelliğin çalışabilmesi için cihazların BIOS/Anakart ayarlarında WOL özelliğinin açık olması ve kablolu ağa bağlı olması gerektiğini bildiren şık bir uyarı bandı eklendi.
 
 ---
 

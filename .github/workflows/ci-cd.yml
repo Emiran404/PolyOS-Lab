@@ -21,21 +21,31 @@ jobs:
 
       - name: Auto-increment Tag
         run: |
-          git fetch --tags --force
-          LATEST_TAG=$(git tag -l "v*" | sort -V | tail -n1)
-          if [ -z "$LATEST_TAG" ]; then
-            NEW_TAG="v1.0.5"
-          else
-            VERSION=${LATEST_TAG#v}
-            IFS='.' read -r major minor patch <<< "$VERSION"
-            patch=$((patch + 1))
-            NEW_TAG="v${major}.${minor}.${patch}"
-          fi
-          echo "Determined new tag: $NEW_TAG"
+          VERSION_NUM=$(node -p "require('./dashboard/package.json').version")
+          NEW_TAG="v$VERSION_NUM"
+          echo "Determined version from package.json: $VERSION_NUM"
           echo "tag_name=$NEW_TAG" >> $GITHUB_ENV
-          echo "version_num=${NEW_TAG#v}" >> $GITHUB_ENV
+          echo "version_num=$VERSION_NUM" >> $GITHUB_ENV
+          
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Sync README.md version
+          node -e "
+            const fs = require('fs');
+            let readme = fs.readFileSync('README.md', 'utf8');
+            readme = readme.replace(/VERSIYON-[0-9.]+-blue/g, 'VERSIYON-$VERSION_NUM-blue');
+            fs.writeFileSync('README.md', readme);
+          "
+          
+          # Commit updates back to main
+          git add README.md dashboard/package.json dashboard/package-lock.json || true
+          git commit -m "chore: release version $VERSION_NUM [skip ci]" || true
+          git push origin main || true
+          
+          # Push the tag
+          git tag -d $NEW_TAG || true
+          git push origin :refs/tags/$NEW_TAG || true
           git tag $NEW_TAG
           git push origin $NEW_TAG
 

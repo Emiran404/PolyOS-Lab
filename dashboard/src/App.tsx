@@ -233,6 +233,45 @@ function App() {
     jitter: 1.4
   });
 
+  const [telemetryHistory, setTelemetryHistory] = useState<{ download: number; upload: number }[]>(() => {
+    const initialHistory = [];
+    for (let i = 0; i < 20; i++) {
+      initialHistory.push({ download: 142.4, upload: 38.6 });
+    }
+    return initialHistory;
+  });
+
+  useEffect(() => {
+    setTelemetryHistory(prev => {
+      const next = [...prev, { download: telemetry.download, upload: telemetry.upload }];
+      if (next.length > 25) {
+        next.shift();
+      }
+      return next;
+    });
+  }, [telemetry]);
+
+  const generatePath = (key: 'download' | 'upload', maxVal: number) => {
+    if (telemetryHistory.length < 2) {
+      return `M 0 80 L 400 80`;
+    }
+    const points = telemetryHistory.map((pt, index) => {
+      const x = (index / (telemetryHistory.length - 1)) * 400;
+      const ratio = Math.min(1, Math.max(0, pt[key] / maxVal));
+      const y = 90 - ratio * 70;
+      return { x, y };
+    });
+
+    let d = `M ${points[0].x} ${points[0].y}`;
+    for (let i = 1; i < points.length; i++) {
+      const p0 = points[i - 1];
+      const p1 = points[i];
+      const cpX = (p0.x + p1.x) / 2;
+      d += ` C ${cpX} ${p0.y}, ${cpX} ${p1.y}, ${p1.x} ${p1.y}`;
+    }
+    return d;
+  };
+
   // Screen Share, USB block, PolyOS Wake States
   const [isSharingScreen, setIsSharingScreen] = useState(false);
   const [usbBlocked, setUsbBlocked] = useState(false);
@@ -899,10 +938,17 @@ function App() {
                   <HelpCircle size={18} />
                   Yardım
                 </button>
-                <button className="btn-primary" onClick={() => triggerWake('all')}>
-                  <Power size={18} />
-                  Tümünü Uyandır
-                </button>
+                {devices && devices.length > 0 && devices.every(device => device.isOnline) ? (
+                  <button className="btn-primary" onClick={() => sendToAll('shutdown')} style={{ backgroundColor: '#dc2626' }}>
+                    <Power size={18} />
+                    Tümünü Kapat
+                  </button>
+                ) : (
+                  <button className="btn-primary" onClick={() => triggerWake('all')}>
+                    <Power size={18} />
+                    Tümünü Uyandır
+                  </button>
+                )}
               </div>
             </div>
 
@@ -1475,16 +1521,16 @@ function App() {
                   alignItems: 'center',
                   justifyContent: 'center'
                 }}>
-                  <div style={{ position: 'absolute', top: '10px', left: '15px', fontSize: '11px', color: 'var(--color-text-muted)', fontWeight: 600 }}>Ağ Trafik Akışı</div>
+                   <div style={{ position: 'absolute', top: '10px', left: '15px', fontSize: '11px', color: 'var(--color-text-muted)', fontWeight: 600 }}>Ağ Trafik Akışı</div>
                   <svg width="100%" height="100%" viewBox="0 0 400 100" preserveAspectRatio="none" style={{ position: 'absolute', bottom: 0, left: 0 }}>
                     <path 
-                      d={`M 0 80 Q 50 ${60 + (Math.random() - 0.5) * 15} 100 ${70 + (Math.random() - 0.5) * 15} T 200 ${50 + (Math.random() - 0.5) * 20} T 300 ${80 + (Math.random() - 0.5) * 10} T 400 ${internetStatus === 'disabled' ? 100 : 40}`} 
+                      d={internetStatus === 'disabled' ? "M 0 95 L 400 95" : generatePath('download', 250)} 
                       fill="none" 
                       stroke="var(--primary)" 
                       strokeWidth="2.5"
                     />
                     <path 
-                      d={`M 0 85 Q 50 ${75 + (Math.random() - 0.5) * 10} 100 ${80 + (Math.random() - 0.5) * 10} T 200 ${65 + (Math.random() - 0.5) * 15} T 300 ${85 + (Math.random() - 0.5) * 5} T 400 ${internetStatus === 'disabled' ? 100 : 55}`} 
+                      d={internetStatus === 'disabled' ? "M 0 95 L 400 95" : generatePath('upload', 80)} 
                       fill="none" 
                       stroke="#0ea5e9" 
                       strokeWidth="1.5" 
@@ -1975,7 +2021,7 @@ function App() {
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(0,0,0,0.03)', paddingBottom: '6px' }}>
                     <span style={{ color: 'var(--color-text-secondary)' }}>Sürüm (Version):</span>
-                    <span style={{ fontWeight: 600, color: '#3b82f6' }}>v1.2.0</span>
+                    <span style={{ fontWeight: 600, color: '#3b82f6' }}>v1.2.7</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(0,0,0,0.03)', paddingBottom: '6px' }}>
                     <span style={{ color: 'var(--color-text-secondary)' }}>Geliştirici (Developer):</span>
@@ -2004,10 +2050,34 @@ function App() {
                   Önceden bağlanmış olan bilgisayarları uyandırın, kapatın veya yönetin.
                 </p>
               </div>
-              <button className="btn-primary" onClick={() => triggerWake('all')} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Power size={18} /> Topluca Uyandır
-              </button>
+              {devices && devices.length > 0 && devices.every(device => device.isOnline) ? (
+                <button className="btn-primary" onClick={() => sendToAll('shutdown')} style={{ display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: '#dc2626' }}>
+                  <Power size={18} /> Topluca Kapat
+                </button>
+              ) : (
+                <button className="btn-primary" onClick={() => triggerWake('all')} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Power size={18} /> Topluca Uyandır
+                </button>
+              )}
             </div>
+            
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '12px', 
+              backgroundColor: '#fffbeb', 
+              border: '1px solid #fef3c7', 
+              borderRadius: '8px', 
+              padding: '12px 16px', 
+              marginTop: '16px', 
+              color: '#b45309' 
+            }}>
+              <AlertCircle size={20} color="#d97706" style={{ flexShrink: 0 }} />
+              <div style={{ fontSize: '13px', lineHeight: '1.5' }}>
+                <strong>Önemli Bilgi:</strong> Bilgisayarları uzaktan açabilmek (WOL) için hedef cihazların anakart (BIOS) ayarlarında <strong>Wake-on-LAN (WOL)</strong> özelliğinin aktif olması ve bilgisayarların kablolu (Ethernet) ağ bağlantısı üzerinden bağlı olması gerekmektedir.
+              </div>
+            </div>
+
             <div style={{ marginTop: '20px' }}>
               {!devices || devices.length === 0 ? (
                 <div className="empty-state">
