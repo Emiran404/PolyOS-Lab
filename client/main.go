@@ -16,6 +16,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"os/user"
 	"path/filepath"
 	"runtime"
 	"strconv"
@@ -28,7 +29,7 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-const clientVersion = "1.3.0"
+const clientVersion = "1.3.1"
 
 var (
 	captureInterval = 2000 * time.Millisecond
@@ -619,30 +620,69 @@ func runGUICommand(name string, arg ...string) *exec.Cmd {
 	}
 
 	exePath := findExecutable(name)
-	user := getLoggedInGUIUser()
-	xauth := getXAuthorityPath(user)
+	userStr := getLoggedInGUIUser()
+	xauth := getXAuthorityPath(userStr)
 
-	if user == "root" {
-		c := exec.Command(exePath, arg...)
-		env := append(os.Environ(), "DISPLAY=:0")
-		if xauth != "" {
-			env = append(env, "XAUTHORITY="+xauth)
-		}
-		c.Env = env
-		return c
-	}
-
-	envArgs := []string{"DISPLAY=:0"}
+	c := exec.Command(exePath, arg...)
+	env := append(os.Environ(), "DISPLAY=:0")
 	if xauth != "" {
-		envArgs = append(envArgs, "XAUTHORITY="+xauth)
+		env = append(env, "XAUTHORITY="+xauth)
+	}
+	c.Env = env
+
+	if userStr != "" && userStr != "root" {
+		if u, err := user.Lookup(userStr); err == nil {
+			uid, _ := strconv.ParseUint(u.Uid, 10, 32)
+			gid, _ := strconv.ParseUint(u.Gid, 10, 32)
+			c.SysProcAttr = &syscall.SysProcAttr{
+				Credential: &syscall.Credential{
+					Uid: uint32(uid),
+					Gid: uint32(gid),
+				},
+			}
+			log.Printf("[GUI] Çalıştırılıyor (Kullanıcı: %s, UID: %d, GID: %d): %s\n", userStr, uid, gid, exePath)
+		} else {
+			log.Printf("[GUI WARNING] Kullanıcı bulunamadı %s: %v\n", userStr, err)
+		}
+	} else {
+		log.Printf("[GUI] Çalıştırılıyor (Kullanıcı: root): %s\n", exePath)
 	}
 
-	args := []string{"-u", user, "env"}
-	args = append(args, envArgs...)
-	args = append(args, exePath)
-	args = append(args, arg...)
-	c := exec.Command("sudo", args...)
 	return c
+}
+
+func runAndMonitorGUICommand(name string, executable string, arg ...string) (*exec.Cmd, error) {
+	c := runGUICommand(executable, arg...)
+	
+	var outputBuf bytes.Buffer
+	c.Stdout = &outputBuf
+	c.Stderr = &outputBuf
+
+	err := c.Start()
+	if err != nil {
+		return nil, err
+	}
+
+	go func() {
+		waitErr := c.Wait()
+		if waitErr != nil {
+			logMsg := fmt.Sprintf("[%s] Başlatılan süreç sonlandı: %v. Hata çıktısı: %s", name, waitErr, strings.TrimSpace(outputBuf.String()))
+			log.Println(logMsg)
+			sendSystemLogToServer(logMsg)
+		} else {
+			log.Printf("[%s] Süreç başarıyla sonlandı.\n", name)
+		}
+	}()
+
+	return c, nil
+}
+
+func sendSystemLogToServer(msg string) {
+	hostname, _ := os.Hostname()
+	_ = safeWriteJSON(map[string]interface{}{
+		"type": "log",
+		"data": fmt.Sprintf("[%s] %s", hostname, msg),
+	})
 }
 
 var (
@@ -850,8 +890,8 @@ func startLockOverlay() {
 		}
 
 		for _, b := range browsers {
-			c := runGUICommand(b[0], b[1:]...)
-			if err := c.Start(); err == nil {
+			c, err := runAndMonitorGUICommand("LockScreen", b[0], b[1:]...)
+			if err == nil {
 				lockOverlayCmd = c
 				break
 			}
@@ -872,8 +912,8 @@ root.mainloop()
 `
 			tmpPy := filepath.Join(os.TempDir(), "polyos_lock.py")
 			_ = os.WriteFile(tmpPy, []byte(pyCode), 0644)
-			c := runGUICommand("python3", tmpPy)
-			if err := c.Start(); err == nil {
+			c, err := runAndMonitorGUICommand("LockScreenPython", "python3", tmpPy)
+			if err == nil {
 				lockOverlayCmd = c
 			}
 		}
@@ -976,8 +1016,8 @@ func startScreenShareViewer() {
 	}
 
 	for _, b := range browsers {
-		c := runGUICommand(b[0], b[1:]...)
-		if err := c.Start(); err == nil {
+		c, err := runAndMonitorGUICommand("ScreenShare", b[0], b[1:]...)
+		if err == nil {
 			screenShareCmd = c
 			break
 		}

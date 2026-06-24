@@ -1,6 +1,6 @@
-# PolyOS Lab v1.3.0 - Sürüm Açıklaması
+# PolyOS Lab v1.3.1 - Sürüm Açıklaması
 
-🎉 **PolyOS Lab v1.3.0**
+🎉 **PolyOS Lab v1.3.1**
 
 Bu sürüm, Pardus (Linux) istemcilerindeki ekran kilitleme ve ekran yansıtma kararlılık iyileştirmelerini, gerçek ağ trafik grafik entegrasyonunu ve yönlendirici uyarılarını içermektedir.
 
