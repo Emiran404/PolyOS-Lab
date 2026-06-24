@@ -1001,7 +1001,7 @@ func runSystemCommand(action string) {
 		if runtime.GOOS == "darwin" {
 			runCommandWithLog("networksetup", "-setnetworkserviceenabled", "Wi-Fi", "off")
 		} else {
-			// Create custom POLYOS_BLOCK chain and reject non-local traffic
+			// Create custom POLYOS_BLOCK chain (IPv4) and reject non-local traffic
 			_ = exec.Command("iptables", "-N", "POLYOS_BLOCK").Run()
 			_ = exec.Command("iptables", "-F", "POLYOS_BLOCK").Run()
 			_ = exec.Command("iptables", "-A", "POLYOS_BLOCK", "-o", "lo", "-j", "ACCEPT").Run()
@@ -1015,7 +1015,22 @@ func runSystemCommand(action string) {
 			if err != nil {
 				_ = exec.Command("iptables", "-I", "OUTPUT", "1", "-j", "POLYOS_BLOCK").Run()
 			}
-			log.Println("İnternet kısıtlandı (POLYOS_BLOCK aktif). Yerel ağ bağlantısı korundu.")
+
+			// Create custom POLYOS_BLOCK chain (IPv6) and reject non-local traffic
+			_ = exec.Command("ip6tables", "-N", "POLYOS_BLOCK").Run()
+			_ = exec.Command("ip6tables", "-F", "POLYOS_BLOCK").Run()
+			_ = exec.Command("ip6tables", "-A", "POLYOS_BLOCK", "-o", "lo", "-j", "ACCEPT").Run()
+			_ = exec.Command("ip6tables", "-A", "POLYOS_BLOCK", "-d", "fe80::/10", "-j", "ACCEPT").Run()
+			_ = exec.Command("ip6tables", "-A", "POLYOS_BLOCK", "-d", "fc00::/7", "-j", "ACCEPT").Run()
+			_ = exec.Command("ip6tables", "-A", "POLYOS_BLOCK", "-j", "REJECT").Run()
+
+			// Insert POLYOS_BLOCK jump rule to OUTPUT (IPv6) if not already there
+			err6 := exec.Command("ip6tables", "-C", "OUTPUT", "-j", "POLYOS_BLOCK").Run()
+			if err6 != nil {
+				_ = exec.Command("ip6tables", "-I", "OUTPUT", "1", "-j", "POLYOS_BLOCK").Run()
+			}
+
+			log.Println("İnternet kısıtlandı (POLYOS_BLOCK IPv4 ve IPv6 aktif). Yerel ağ bağlantısı korundu.")
 		}
 		return
 	}
@@ -1024,11 +1039,17 @@ func runSystemCommand(action string) {
 		if runtime.GOOS == "darwin" {
 			runCommandWithLog("networksetup", "-setnetworkserviceenabled", "Wi-Fi", "on")
 		} else {
-			// Tear down POLYOS_BLOCK chain and re-enable internet
+			// Tear down POLYOS_BLOCK chain (IPv4)
 			_ = exec.Command("iptables", "-D", "OUTPUT", "-j", "POLYOS_BLOCK").Run()
 			_ = exec.Command("iptables", "-F", "POLYOS_BLOCK").Run()
 			_ = exec.Command("iptables", "-X", "POLYOS_BLOCK").Run()
-			log.Println("İnternet kısıtlaması kaldırıldı (POLYOS_BLOCK silindi).")
+
+			// Tear down POLYOS_BLOCK chain (IPv6)
+			_ = exec.Command("ip6tables", "-D", "OUTPUT", "-j", "POLYOS_BLOCK").Run()
+			_ = exec.Command("ip6tables", "-F", "POLYOS_BLOCK").Run()
+			_ = exec.Command("ip6tables", "-X", "POLYOS_BLOCK").Run()
+
+			log.Println("İnternet kısıtlaması kaldırıldı (POLYOS_BLOCK IPv4 ve IPv6 silindi).")
 		}
 		return
 	}
