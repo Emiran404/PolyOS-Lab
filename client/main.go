@@ -29,7 +29,7 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-const clientVersion = "1.3.3"
+const clientVersion = "1.3.4"
 
 var (
 	captureInterval = 2000 * time.Millisecond
@@ -44,6 +44,8 @@ var (
 	isLoggingToWS   bool
 	logLoopMutex    sync.Mutex
 	wsWriteMutex    sync.Mutex
+	lockOverlayCmd  *exec.Cmd
+	lockMutex       sync.Mutex
 )
 
 func safeWriteJSON(data interface{}) error {
@@ -698,10 +700,14 @@ func sendSystemLogToServer(msg string) {
 	})
 }
 
-var (
-	lockOverlayCmd *exec.Cmd
-	lockMutex      sync.Mutex
-)
+func killProcessByName(name string) {
+	if runtime.GOOS == "darwin" {
+		_ = exec.Command("killall", name).Run()
+		return
+	}
+	// Kill by binary name on Linux
+	_ = exec.Command("pkill", "-f", name).Run()
+}
 
 func startLockOverlay() {
 	lockMutex.Lock()
@@ -710,6 +716,12 @@ func startLockOverlay() {
 	if lockOverlayCmd != nil {
 		return
 	}
+
+	// Clean up any lingering lock screen browser instances first
+	killProcessByName("firefox")
+	killProcessByName("chromium-browser")
+	killProcessByName("chromium")
+	killProcessByName("chrome")
 
 	htmlContent := `<!DOCTYPE html>
 <html lang="tr">
@@ -948,6 +960,10 @@ func stopLockOverlay() {
 		_ = lockOverlayCmd.Wait()
 		lockOverlayCmd = nil
 	}
+	killProcessByName("firefox")
+	killProcessByName("chromium-browser")
+	killProcessByName("chromium")
+	killProcessByName("chrome")
 	_ = os.Remove(filepath.Join(os.TempDir(), "polyos_lock.html"))
 	_ = os.Remove(filepath.Join(os.TempDir(), "polyos_lock.py"))
 }
