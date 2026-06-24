@@ -28,7 +28,7 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-const clientVersion = "1.2.9"
+const clientVersion = "1.3.0"
 
 var (
 	captureInterval = 2000 * time.Millisecond
@@ -498,6 +498,42 @@ func captureScreen() []byte {
 	return bytesData
 }
 
+func findExecutable(name string) string {
+	if path, err := exec.LookPath(name); err == nil {
+		return path
+	}
+	fallbacks := []string{
+		"/usr/sbin/" + name,
+		"/sbin/" + name,
+		"/usr/bin/" + name,
+		"/bin/" + name,
+	}
+	for _, f := range fallbacks {
+		if _, err := os.Stat(f); err == nil {
+			return f
+		}
+	}
+	return name
+}
+
+func getServerHTTPURL() string {
+	u := serverURL
+	u = strings.Replace(u, "ws://", "http://", 1)
+	u = strings.Replace(u, "wss://", "https://", 1)
+	if idx := strings.LastIndex(u, "/ws"); idx != -1 {
+		u = u[:idx]
+	}
+	return u
+}
+
+func getShareURL() string {
+	u := serverURL
+	u = strings.Replace(u, "ws://", "http://", 1)
+	u = strings.Replace(u, "wss://", "https://", 1)
+	u = strings.Replace(u, "/ws", "/share", 1)
+	return u
+}
+
 func getLoggedInGUIUser() string {
 	out, err := exec.Command("logname").Output()
 	if err == nil && len(strings.TrimSpace(string(out))) > 0 {
@@ -582,11 +618,12 @@ func runGUICommand(name string, arg ...string) *exec.Cmd {
 		return exec.Command(name, arg...)
 	}
 
+	exePath := findExecutable(name)
 	user := getLoggedInGUIUser()
 	xauth := getXAuthorityPath(user)
 
 	if user == "root" {
-		c := exec.Command(name, arg...)
+		c := exec.Command(exePath, arg...)
 		env := append(os.Environ(), "DISPLAY=:0")
 		if xauth != "" {
 			env = append(env, "XAUTHORITY="+xauth)
@@ -602,7 +639,7 @@ func runGUICommand(name string, arg ...string) *exec.Cmd {
 
 	args := []string{"-u", user, "env"}
 	args = append(args, envArgs...)
-	args = append(args, name)
+	args = append(args, exePath)
 	args = append(args, arg...)
 	c := exec.Command("sudo", args...)
 	return c
@@ -869,7 +906,7 @@ func setInputsEnabled(enabled bool) {
 	user := getLoggedInGUIUser()
 	xauth := getXAuthorityPath(user)
 
-	cmdList := exec.Command("xinput", "list", "--id-only")
+	cmdList := exec.Command(findExecutable("xinput"), "list", "--id-only")
 	cmdList.Env = append(os.Environ(), "DISPLAY=:0")
 	if xauth != "" {
 		cmdList.Env = append(cmdList.Env, "XAUTHORITY="+xauth)
@@ -879,7 +916,7 @@ func setInputsEnabled(enabled bool) {
 	if err == nil {
 		ids := strings.Fields(string(out))
 		for _, id := range ids {
-			cmdSet := exec.Command("xinput", "set-prop", id, "Device Enabled", val)
+			cmdSet := exec.Command(findExecutable("xinput"), "set-prop", id, "Device Enabled", val)
 			cmdSet.Env = append(os.Environ(), "DISPLAY=:0")
 			if xauth != "" {
 				cmdSet.Env = append(cmdSet.Env, "XAUTHORITY="+xauth)
@@ -916,7 +953,6 @@ func blockUSBDevices(block bool) error {
 
 var (
 	screenShareCmd    *exec.Cmd
-	screenShareWriter io.WriteCloser
 	screenShareMutex  sync.Mutex
 )
 
@@ -928,58 +964,23 @@ func startScreenShareViewer() {
 		return // Zaten açık
 	}
 
-	pyCode := `import sys
-import tkinter as tk
+	shareURL := getShareURL()
+	log.Printf("[ScreenShare] Tarayıcı üzerinden yansıtma başlatılıyor: %s\n", shareURL)
 
-root = tk.Tk()
-root.configure(bg='black')
+	// Tarayıcıları kiosk modunda başlat
+	browsers := [][]string{
+		{"chromium-browser", "--kiosk", "--no-first-run", "--no-default-browser-check", "--user-data-dir=/tmp/polyos_share_chrome", shareURL},
+		{"chromium", "--kiosk", "--no-first-run", "--no-default-browser-check", "--user-data-dir=/tmp/polyos_share_chrome", shareURL},
+		{"google-chrome", "--kiosk", "--no-first-run", "--no-default-browser-check", "--user-data-dir=/tmp/polyos_share_chrome", shareURL},
+		{"firefox", "--new-instance", "--profile", "/tmp/polyos_share_firefox", "--kiosk", shareURL},
+	}
 
-# Force true fullscreen overlay for X11 / window managers on Pardus
-w = root.winfo_screenwidth()
-h = root.winfo_screenheight()
-root.geometry(f"{w}x{h}+0+0")
-root.overrideredirect(True)
-root.attributes('-topmost', True)
-root.lift()
-root.focus_force()
-
-try:
-    root.grab_set_global()
-except:
-    pass
-
-root.bind("<Alt-F4>", lambda e: "break")
-root.bind("<Alt-Tab>", lambda e: "break")
-
-label = tk.Label(root, bg='black')
-label.pack(expand=True, fill='both')
-
-def check_stdin():
-    line = sys.stdin.readline()
-    if line:
-        try:
-            data = line.strip()
-            if data == "close":
-                root.destroy()
-                return
-            photo = tk.PhotoImage(data=data)
-            label.config(image=photo)
-            label.image = photo
-        except Exception as e:
-            pass
-    root.after(15, check_stdin)
-
-root.after(15, check_stdin)
-root.mainloop()
-`
-	tmpFile := filepath.Join(os.TempDir(), "polyos_share_viewer.py")
-	_ = os.WriteFile(tmpFile, []byte(pyCode), 0644)
-
-	screenShareCmd = runGUICommand("python3", tmpFile)
-	var err error
-	screenShareWriter, err = screenShareCmd.StdinPipe()
-	if err == nil {
-		_ = screenShareCmd.Start()
+	for _, b := range browsers {
+		c := runGUICommand(b[0], b[1:]...)
+		if err := c.Start(); err == nil {
+			screenShareCmd = c
+			break
+		}
 	}
 }
 
@@ -988,16 +989,10 @@ func stopScreenShareViewer() {
 	defer screenShareMutex.Unlock()
 
 	if screenShareCmd != nil {
-		if screenShareWriter != nil {
-			_, _ = screenShareWriter.Write([]byte("close\n"))
-			screenShareWriter.Close()
-		}
 		_ = screenShareCmd.Process.Kill()
 		_ = screenShareCmd.Wait()
 		screenShareCmd = nil
-		screenShareWriter = nil
 	}
-	_ = os.Remove(filepath.Join(os.TempDir(), "polyos_share_viewer.py"))
 }
 
 func convertJpegBase64ToPngBase64(jpegB64 string) (string, error) {
@@ -1076,36 +1071,50 @@ func runSystemCommand(action string) {
 		if runtime.GOOS == "darwin" {
 			runCommandWithLog("networksetup", "-setnetworkserviceenabled", "Wi-Fi", "off")
 		} else {
+			iptablesPath := findExecutable("iptables")
+			ip6tablesPath := findExecutable("ip6tables")
+
 			// Create custom POLYOS_BLOCK chain (IPv4) and reject non-local traffic
-			_ = exec.Command("iptables", "-N", "POLYOS_BLOCK").Run()
-			_ = exec.Command("iptables", "-F", "POLYOS_BLOCK").Run()
-			_ = exec.Command("iptables", "-A", "POLYOS_BLOCK", "-o", "lo", "-j", "ACCEPT").Run()
-			_ = exec.Command("iptables", "-A", "POLYOS_BLOCK", "-d", "192.168.0.0/16", "-j", "ACCEPT").Run()
-			_ = exec.Command("iptables", "-A", "POLYOS_BLOCK", "-d", "10.0.0.0/8", "-j", "ACCEPT").Run()
-			_ = exec.Command("iptables", "-A", "POLYOS_BLOCK", "-d", "172.16.0.0/12", "-j", "ACCEPT").Run()
-			_ = exec.Command("iptables", "-A", "POLYOS_BLOCK", "-j", "REJECT").Run()
+			_ = exec.Command(iptablesPath, "-N", "POLYOS_BLOCK").Run()
+			_ = exec.Command(iptablesPath, "-F", "POLYOS_BLOCK").Run()
+			_ = exec.Command(iptablesPath, "-A", "POLYOS_BLOCK", "-o", "lo", "-j", "ACCEPT").Run()
+			_ = exec.Command(iptablesPath, "-A", "POLYOS_BLOCK", "-i", "lo", "-j", "ACCEPT").Run()
+			_ = exec.Command(iptablesPath, "-A", "POLYOS_BLOCK", "-d", "192.168.0.0/16", "-j", "ACCEPT").Run()
+			_ = exec.Command(iptablesPath, "-A", "POLYOS_BLOCK", "-s", "192.168.0.0/16", "-j", "ACCEPT").Run()
+			_ = exec.Command(iptablesPath, "-A", "POLYOS_BLOCK", "-d", "10.0.0.0/8", "-j", "ACCEPT").Run()
+			_ = exec.Command(iptablesPath, "-A", "POLYOS_BLOCK", "-s", "10.0.0.0/8", "-j", "ACCEPT").Run()
+			_ = exec.Command(iptablesPath, "-A", "POLYOS_BLOCK", "-d", "172.16.0.0/12", "-j", "ACCEPT").Run()
+			_ = exec.Command(iptablesPath, "-A", "POLYOS_BLOCK", "-s", "172.16.0.0/12", "-j", "ACCEPT").Run()
+			_ = exec.Command(iptablesPath, "-A", "POLYOS_BLOCK", "-j", "REJECT").Run()
 			
-			// Insert POLYOS_BLOCK jump rule to OUTPUT if not already there
-			err := exec.Command("iptables", "-C", "OUTPUT", "-j", "POLYOS_BLOCK").Run()
-			if err != nil {
-				_ = exec.Command("iptables", "-I", "OUTPUT", "1", "-j", "POLYOS_BLOCK").Run()
+			// Insert POLYOS_BLOCK jump rule to OUTPUT and INPUT if not already there
+			if exec.Command(iptablesPath, "-C", "OUTPUT", "-j", "POLYOS_BLOCK").Run() != nil {
+				_ = exec.Command(iptablesPath, "-I", "OUTPUT", "1", "-j", "POLYOS_BLOCK").Run()
+			}
+			if exec.Command(iptablesPath, "-C", "INPUT", "-j", "POLYOS_BLOCK").Run() != nil {
+				_ = exec.Command(iptablesPath, "-I", "INPUT", "1", "-j", "POLYOS_BLOCK").Run()
 			}
 
 			// Create custom POLYOS_BLOCK chain (IPv6) and reject non-local traffic
-			_ = exec.Command("ip6tables", "-N", "POLYOS_BLOCK").Run()
-			_ = exec.Command("ip6tables", "-F", "POLYOS_BLOCK").Run()
-			_ = exec.Command("ip6tables", "-A", "POLYOS_BLOCK", "-o", "lo", "-j", "ACCEPT").Run()
-			_ = exec.Command("ip6tables", "-A", "POLYOS_BLOCK", "-d", "fe80::/10", "-j", "ACCEPT").Run()
-			_ = exec.Command("ip6tables", "-A", "POLYOS_BLOCK", "-d", "fc00::/7", "-j", "ACCEPT").Run()
-			_ = exec.Command("ip6tables", "-A", "POLYOS_BLOCK", "-j", "REJECT").Run()
+			_ = exec.Command(ip6tablesPath, "-N", "POLYOS_BLOCK").Run()
+			_ = exec.Command(ip6tablesPath, "-F", "POLYOS_BLOCK").Run()
+			_ = exec.Command(ip6tablesPath, "-A", "POLYOS_BLOCK", "-o", "lo", "-j", "ACCEPT").Run()
+			_ = exec.Command(ip6tablesPath, "-A", "POLYOS_BLOCK", "-i", "lo", "-j", "ACCEPT").Run()
+			_ = exec.Command(ip6tablesPath, "-A", "POLYOS_BLOCK", "-d", "fe80::/10", "-j", "ACCEPT").Run()
+			_ = exec.Command(ip6tablesPath, "-A", "POLYOS_BLOCK", "-s", "fe80::/10", "-j", "ACCEPT").Run()
+			_ = exec.Command(ip6tablesPath, "-A", "POLYOS_BLOCK", "-d", "fc00::/7", "-j", "ACCEPT").Run()
+			_ = exec.Command(ip6tablesPath, "-A", "POLYOS_BLOCK", "-s", "fc00::/7", "-j", "ACCEPT").Run()
+			_ = exec.Command(ip6tablesPath, "-A", "POLYOS_BLOCK", "-j", "REJECT").Run()
 
-			// Insert POLYOS_BLOCK jump rule to OUTPUT (IPv6) if not already there
-			err6 := exec.Command("ip6tables", "-C", "OUTPUT", "-j", "POLYOS_BLOCK").Run()
-			if err6 != nil {
-				_ = exec.Command("ip6tables", "-I", "OUTPUT", "1", "-j", "POLYOS_BLOCK").Run()
+			// Insert POLYOS_BLOCK jump rule to OUTPUT and INPUT (IPv6) if not already there
+			if exec.Command(ip6tablesPath, "-C", "OUTPUT", "-j", "POLYOS_BLOCK").Run() != nil {
+				_ = exec.Command(ip6tablesPath, "-I", "OUTPUT", "1", "-j", "POLYOS_BLOCK").Run()
+			}
+			if exec.Command(ip6tablesPath, "-C", "INPUT", "-j", "POLYOS_BLOCK").Run() != nil {
+				_ = exec.Command(ip6tablesPath, "-I", "INPUT", "1", "-j", "POLYOS_BLOCK").Run()
 			}
 
-			log.Println("İnternet kısıtlandı (POLYOS_BLOCK IPv4 ve IPv6 aktif). Yerel ağ bağlantısı korundu.")
+			log.Println("İnternet kısıtlandı (POLYOS_BLOCK IPv4 ve IPv6 INPUT/OUTPUT aktif). Yerel ağ bağlantısı korundu.")
 		}
 		return
 	}
@@ -1114,15 +1123,20 @@ func runSystemCommand(action string) {
 		if runtime.GOOS == "darwin" {
 			runCommandWithLog("networksetup", "-setnetworkserviceenabled", "Wi-Fi", "on")
 		} else {
+			iptablesPath := findExecutable("iptables")
+			ip6tablesPath := findExecutable("ip6tables")
+
 			// Tear down POLYOS_BLOCK chain (IPv4)
-			_ = exec.Command("iptables", "-D", "OUTPUT", "-j", "POLYOS_BLOCK").Run()
-			_ = exec.Command("iptables", "-F", "POLYOS_BLOCK").Run()
-			_ = exec.Command("iptables", "-X", "POLYOS_BLOCK").Run()
+			_ = exec.Command(iptablesPath, "-D", "OUTPUT", "-j", "POLYOS_BLOCK").Run()
+			_ = exec.Command(iptablesPath, "-D", "INPUT", "-j", "POLYOS_BLOCK").Run()
+			_ = exec.Command(iptablesPath, "-F", "POLYOS_BLOCK").Run()
+			_ = exec.Command(iptablesPath, "-X", "POLYOS_BLOCK").Run()
 
 			// Tear down POLYOS_BLOCK chain (IPv6)
-			_ = exec.Command("ip6tables", "-D", "OUTPUT", "-j", "POLYOS_BLOCK").Run()
-			_ = exec.Command("ip6tables", "-F", "POLYOS_BLOCK").Run()
-			_ = exec.Command("ip6tables", "-X", "POLYOS_BLOCK").Run()
+			_ = exec.Command(ip6tablesPath, "-D", "OUTPUT", "-j", "POLYOS_BLOCK").Run()
+			_ = exec.Command(ip6tablesPath, "-D", "INPUT", "-j", "POLYOS_BLOCK").Run()
+			_ = exec.Command(ip6tablesPath, "-F", "POLYOS_BLOCK").Run()
+			_ = exec.Command(ip6tablesPath, "-X", "POLYOS_BLOCK").Run()
 
 			log.Println("İnternet kısıtlaması kaldırıldı (POLYOS_BLOCK IPv4 ve IPv6 silindi).")
 		}
@@ -1193,7 +1207,10 @@ func runSystemCommand(action string) {
 
 // Sunucudan gönderilen dosyayı indirip masaüstüne kaydeden fonksiyon
 func handleFileTransfer(fileURL, filename string) {
-	log.Printf("Dosya transfer isteği alındı: %s -> %s\n", filename, fileURL)
+	// Reconstruct the URL using the correct, reachable server address we are communicating with
+	activeServer := getServerHTTPURL()
+	fileURL = activeServer + "/uploads/" + filename
+	log.Printf("Dosya transfer isteği alındı (yeniden yapılandırıldı): %s -> %s\n", filename, fileURL)
 
 	// Dosyayı indir
 	resp, err := http.Get(fileURL)
@@ -1459,20 +1476,8 @@ func main() {
 						runSystemCommand(action)
 					}
 				} else {
-					screenShareMutex.Lock()
-					writer := screenShareWriter
-					screenShareMutex.Unlock()
-
-					if writer != nil {
-						pngB64, err := convertJpegBase64ToPngBase64(string(message))
-						if err == nil {
-							_, _ = writer.Write([]byte(pngB64 + "\n"))
-						}
-					} else {
-						if len(message) < 500 {
-							log.Printf("Bilinmeyen mesaj formatı: %s\n", message)
-						}
-					}
+					// Discard binary frames on the control socket. The kiosk browser
+					// connects directly to the server's /ws/student-viewer stream.
 				}
 			}
 		}()
