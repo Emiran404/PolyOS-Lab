@@ -29,7 +29,7 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-const clientVersion = "1.3.2"
+const clientVersion = "1.3.3"
 
 var (
 	captureInterval = 2000 * time.Millisecond
@@ -896,8 +896,13 @@ func startLockOverlay() {
 		}
 		lockOverlayCmd = cmd
 	} else {
+		// Ensure the custom firefox profile directory exists and is accessible
+		firefoxProfileDir := "/tmp/polyos_lock_firefox"
+		_ = os.MkdirAll(firefoxProfileDir, 0777)
+		_ = os.Chmod(firefoxProfileDir, 0777)
+
 		browsers := [][]string{
-			{"firefox", "--new-instance", "--profile", "/tmp/polyos_lock_firefox", "--kiosk", "file://" + tmpHTML},
+			{"firefox", "--new-instance", "--profile", firefoxProfileDir, "--kiosk", "file://" + tmpHTML},
 			{"chromium-browser", "--kiosk", "--user-data-dir=/tmp/polyos_lock_chrome", "--app=file://" + tmpHTML},
 			{"chromium", "--kiosk", "--user-data-dir=/tmp/polyos_lock_chrome", "--app=file://" + tmpHTML},
 			{"google-chrome", "--kiosk", "--user-data-dir=/tmp/polyos_lock_chrome", "--app=file://" + tmpHTML},
@@ -1021,9 +1026,14 @@ func startScreenShareViewer() {
 	shareURL := getShareURL()
 	log.Printf("[ScreenShare] Tarayıcı üzerinden yansıtma başlatılıyor: %s\n", shareURL)
 
+	// Ensure the custom firefox profile directory exists and is accessible
+	firefoxProfileDir := "/tmp/polyos_share_firefox"
+	_ = os.MkdirAll(firefoxProfileDir, 0777)
+	_ = os.Chmod(firefoxProfileDir, 0777)
+
 	// Tarayıcıları kiosk modunda başlat
 	browsers := [][]string{
-		{"firefox", "--new-instance", "--profile", "/tmp/polyos_share_firefox", "--kiosk", shareURL},
+		{"firefox", "--new-instance", "--profile", firefoxProfileDir, "--kiosk", shareURL},
 		{"chromium-browser", "--kiosk", "--no-first-run", "--no-default-browser-check", "--user-data-dir=/tmp/polyos_share_chrome", shareURL},
 		{"chromium", "--kiosk", "--no-first-run", "--no-default-browser-check", "--user-data-dir=/tmp/polyos_share_chrome", shareURL},
 		{"google-chrome", "--kiosk", "--no-first-run", "--no-default-browser-check", "--user-data-dir=/tmp/polyos_share_chrome", shareURL},

@@ -1,22 +1,16 @@
-# PolyOS Lab v1.3.2 - Sürüm Açıklaması
+# PolyOS Lab v1.3.3 - Sürüm Açıklaması
 
-🎉 **PolyOS Lab v1.3.2**
+🎉 **PolyOS Lab v1.3.3**
 
-Bu sürüm; internet kısıtlamaları sırasında istemcilerin kopması, kilit ekranındaki CSS/CDN bağımlılığı kaynaklı görsel bozulmalar ve Firefox tarayıcı entegrasyonu önceliği gibi kritik kararlılık hataları için düzeltmeler içerir.
+Bu sürüm; Firefox tarayıcısının kilit ekranı ve ekran yansıtma modlarında kiosk modunda başlatılırken verdiği "Profile cannot be loaded" (Profil yüklenemedi) hatası için düzeltmeler içerir.
 
 ---
 
 ## 🚀 Yenilikler ve İyileştirmeler
 
-### 🔒 İnternet Kısıtlaması & Çevrimiçi Kalma Garantisi
-* **Dinamik Sunucu IP Beyaz Listesi (Whitelist):** İnternet engellendiğinde istemcinin dashboard ile olan bağlantısının kesilmesi ve ağdan düşmesi engellendi. `iptables` kısıtlama zincirine (`POLYOS_BLOCK`) öğretmen bilgisayarının güncel IP adresi dinamik olarak whiteliste eklenerek kesintisiz yerel ağ iletişimi sağlandı.
-
-### 🎨 Çevrimdışı Kilit Ekranı Arayüzü (Lock Screen CSS Fix)
-* **Sıfır Ağ Bağımlılığı:** İnternet kısıtlandığında Tailwind CSS ve Material Symbols CDN'lerinin yüklenememesinden ötürü kilit ekranındaki tasarımın bozulması engellendi.
-* Arayüz tamamen **saf CSS (Vanilla CSS)** ve **inline SVG** ikonlar kullanılarak internet bağlantısına ihtiyaç duymayan, şık ve kendi kendine yeten (self-contained) bir yapıya dönüştürüldü.
-
-### 🌐 Firefox Tarayıcı Önceliği
-* Pardus (Linux) istemcilerde varsayılan olarak kurulu gelen **Firefox**, Ekran Kilitleme ve Ekran Paylaşımı (Screen Share) işlemlerinde birinci öncelikli (index 0) tarayıcı olarak ayarlandı. Firefox ile başlayıp başarısız olunması durumunda Chromium türevlerine geçiş yapılacaktır.
+### 🌐 Firefox Profil Yükleme Hatası Düzeltmesi (Profile Fix)
+* **Kök Neden:** Firefox `--profile` parametresi ile geçici bir dizinde (`/tmp/...`) başlatıldığında, bu dizin sistem tarafından önceden oluşturulmamış veya izinleri GUI kullanıcısı ile root arasında uyuşmazlık içeriyorsa Firefox'un kilitlenmesine sebep oluyordu.
+* **Çözüm:** Firefox başlatılmadan hemen önce, kilit ekranı (`/tmp/polyos_lock_firefox`) ve ekran paylaşımı (`/tmp/polyos_share_firefox`) için kullanılacak olan profil dizinleri Go istemcisinde dinamik olarak oluşturulup (`os.MkdirAll`) okuma/yazma izinleri en geniş seviyeye (`0777`) çekilerek Firefox'un yetki ve dosya erişim hatası vermesi tamamen engellendi.
 
 ---
 
