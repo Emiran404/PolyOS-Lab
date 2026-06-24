@@ -582,7 +582,7 @@ function App() {
       try {
         const response = await fetch('http://localhost:8080/api/devices');
         const data = await response.json();
-        setDevices(data);
+        setDevices(data || []);
       } catch (error) {
         console.error("Failed to fetch devices:", error);
       }
@@ -1949,7 +1949,7 @@ function App() {
               </button>
             </div>
             <div style={{ marginTop: '20px' }}>
-              {devices.length === 0 ? (
+              {!devices || devices.length === 0 ? (
                 <div className="empty-state">
                   <Monitor size={48} className="empty-icon" />
                   <p>Kayıtlı cihaz bulunmuyor. İstemciler bağlandıkça buraya kaydedilecektir.</p>

@@ -565,7 +565,7 @@ func handleDevices(w http.ResponseWriter, r *http.Request) {
 		IsOnline bool      `json:"isOnline"`
 	}
 
-	var respList []DeviceResponse
+	respList := []DeviceResponse{}
 	for _, dev := range devices {
 		isOnline := false
 		for _, c := range clients {
