@@ -535,6 +535,19 @@ func getShareURL() string {
 	return u
 }
 
+func getServerIP() string {
+	u := serverURL
+	u = strings.Replace(u, "ws://", "", 1)
+	u = strings.Replace(u, "wss://", "", 1)
+	if idx := strings.Index(u, "/"); idx != -1 {
+		u = u[:idx]
+	}
+	if idx := strings.Index(u, ":"); idx != -1 {
+		u = u[:idx]
+	}
+	return u
+}
+
 func getLoggedInGUIUser() string {
 	out, err := exec.Command("logname").Output()
 	if err == nil && len(strings.TrimSpace(string(out))) > 0 {
@@ -699,176 +712,177 @@ func startLockOverlay() {
 	}
 
 	htmlContent := `<!DOCTYPE html>
-<html lang="tr"><head>
-<meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>Erişim Kısıtlandı</title>
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-<script id="tailwind-config">
-        tailwind.config = {
-            darkMode: "class",
-            theme: {
-                extend: {
-                    "colors": {
-                        "secondary-fixed-dim": "#c1c7cf",
-                        "on-surface-variant": "#45474c",
-                        "surface-container-high": "#e8e8e8",
-                        "on-surface": "#1a1c1c",
-                        "background": "#f9f9f9",
-                        "primary-container": "#1e293b",
-                        "on-tertiary-fixed": "#410004",
-                        "on-secondary": "#ffffff",
-                        "tertiary-fixed": "#ffdad7",
-                        "primary": "#091426",
-                        "on-tertiary-fixed-variant": "#930013",
-                        "on-error": "#ffffff",
-                        "surface": "#f9f9f9",
-                        "primary-fixed": "#d8e3fb",
-                        "inverse-on-surface": "#f0f1f1",
-                        "surface-container-low": "#f3f3f4",
-                        "on-secondary-fixed-variant": "#41474e",
-                        "surface-container-highest": "#e2e2e2",
-                        "error-container": "#ffdad6",
-                        "inverse-primary": "#bcc7de",
-                        "outline-variant": "#c5c6cd",
-                        "tertiary": "#330002",
-                        "on-primary-fixed": "#111c2d",
-                        "inverse-surface": "#2f3131",
-                        "tertiary-container": "#5a0008",
-                        "tertiary-fixed-dim": "#ffb3ad",
-                        "on-background": "#1a1c1c",
-                        "secondary": "#595f66",
-                        "on-primary": "#ffffff",
-                        "surface-tint": "#545f73",
-                        "on-secondary-container": "#5f656c",
-                        "secondary-fixed": "#dde3eb",
-                        "surface-variant": "#e2e2e2",
-                        "surface-container": "#eeeeee",
-                        "on-primary-fixed-variant": "#3c475a",
-                        "on-error-container": "#93000a",
-                        "surface-container-lowest": "#ffffff",
-                        "surface-bright": "#f9f9f9",
-                        "on-secondary-fixed": "#161c22",
-                        "on-tertiary": "#ffffff",
-                        "on-primary-container": "#8590a6",
-                        "on-tertiary-container": "#ff5250",
-                        "secondary-container": "#dde3eb",
-                        "error": "#ba1a1a",
-                        "primary-fixed-dim": "#bcc7de",
-                        "surface-dim": "#dadada",
-                        "outline": "#75777d"
-                    },
-                    "borderRadius": {
-                        "DEFAULT": "0.25rem",
-                        "lg": "0.5rem",
-                        "xl": "0.75rem",
-                        "full": "9999px"
-                    },
-                    "spacing": {
-                        "stack-lg": "2rem",
-                        "margin-page": "2rem",
-                        "stack-sm": "0.5rem",
-                        "gutter": "1.5rem",
-                        "container-max-width": "440px",
-                        "stack-md": "1rem",
-                        "unit": "8px"
-                    },
-                    "fontFamily": {
-                        "label-md": ["Inter"],
-                        "headline-lg-mobile": ["Inter"],
-                        "body-md": ["Inter"],
-                        "headline-lg": ["Inter"],
-                        "headline-xl": ["Inter"],
-                        "body-lg": ["Inter"],
-                        "label-sm": ["Inter"]
-                    },
-                    "fontSize": {
-                        "label-md": ["14px", { "lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "600" }],
-                        "headline-lg-mobile": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
-                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
-                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
-                        "headline-xl": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
-                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }],
-                        "label-sm": ["12px", { "lineHeight": "16px", "fontWeight": "500" }]
-                    }
-                }
-            }
+<html lang="tr">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Erişim Kısıtlandı</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
         }
-    </script>
-<style>
         body {
-            background-color: #ffffff;
+            background-color: #f9f9f9;
+            color: #1a1c1c;
             display: flex;
             flex-direction: column;
             min-height: 100vh;
-            margin: 0;
             overflow: hidden;
-            font-family: 'Inter', sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             align-items: center;
             justify-content: center;
         }
-
-        .ambient-shadow {
+        header {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 2rem;
+            background: transparent;
+        }
+        .header-logo {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: #45474c;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        .header-icons {
+            display: flex;
+            gap: 1rem;
+            color: #45474c;
+        }
+        main {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 1.5rem;
+            width: 100%;
+            z-index: 10;
+        }
+        .card {
+            width: 100%;
+            max-width: 440px;
+            background-color: #ffffff;
+            border-radius: 0.75rem;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            border: 1px solid #e2e2e2;
             box-shadow: 0 20px 50px rgba(30, 41, 59, 0.08);
         }
-
-        .glow-effect {
+        .icon-container {
+            width: 6rem;
+            height: 6rem;
+            border-radius: 9999px;
+            background-color: #ffdad6;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 2rem;
+            border: 4px solid #ffffff;
             box-shadow: 0 0 40px rgba(186, 26, 26, 0.15);
         }
-        
-        .material-symbols-outlined {
-            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        .title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #091426;
+            margin-bottom: 0.5rem;
+            text-align: center;
         }
-        
-        .material-symbols-outlined.filled {
-            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        .subtitle {
+            font-size: 16px;
+            color: #595f66;
+            text-align: center;
+            line-height: 1.5;
+            padding: 0 1rem;
+        }
+        .info-text {
+            margin-top: 2rem;
+            font-size: 12px;
+            color: #595f66;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+        footer {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-bottom: 2rem;
+            gap: 0.5rem;
+            background: transparent;
+            z-index: 0;
+        }
+        .footer-links {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 0.5rem;
+        }
+        .footer-links a {
+            font-size: 12px;
+            color: #595f66;
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+        .footer-links a:hover {
+            color: #091426;
+        }
+        .footer-copy {
+            font-size: 12px;
+            font-weight: 500;
+            color: #595f66;
+        }
+        svg {
+            fill: currentColor;
         }
     </style>
 </head>
-<body class="text-on-surface flex items-center justify-center">
-<header class="flex justify-between items-center w-full px-margin-page py-4 bg-transparent top-0 absolute">
-<div class="flex items-center gap-2">
-<span class="material-symbols-outlined text-on-surface-variant filled" data-icon="lock" style="font-size: 20px;">lock</span>
-<span class="text-label-md font-label-md font-bold text-on-surface-variant">PolyOS Lab</span>
-</div>
-<div class="flex gap-4 text-on-surface-variant">
-<span class="material-symbols-outlined" data-icon="wifi" style="font-size: 20px;">wifi</span>
-<span class="material-symbols-outlined" data-icon="battery_full" style="font-size: 20px;">battery_full</span>
-</div>
+<body>
+<header>
+    <div class="header-logo">
+        <svg width="20" height="20" viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1 .9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
+        <span>PolyOS Lab</span>
+    </div>
+    <div class="header-icons">
+        <svg width="20" height="20" viewBox="0 0 24 24"><path d="M12 21l-1.45-1.45C5.4 14.47 2 11.39 2 7.5 2 4.42 4.42 2 7.5 2c1.74 0 3.41.81 4.5 2.09C13.09 2.81 14.76 2 16.5 2 19.58 2 22 4.42 22 7.5c0 3.89-3.4 6.97-8.55 12.05L12 21z" style="display:none;"/><svg width="20" height="20" viewBox="0 0 24 24"><path d="M12 3c-4.97 0-9 4.03-9 9 0 2.12.74 4.07 1.97 5.61L4.35 19.4c3.9 3.9 10.2 3.9 14.1 0l-1.62-1.62C18.06 16.24 18.8 14.29 18.8 12.2c0-4.97-4.03-9-9-9zm0 15c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8l7.52 7.52c-.67.43-1.45.68-2.22.68zm4.49-2.73l-7.85-7.85C9.31 6.84 10.6 6.2 12 6.2c3.31 0 6 2.69 6 6 0 1.2-.36 2.32-.97 3.27z"/></svg></svg>
+        <svg width="20" height="20" viewBox="0 0 24 24"><path d="M17 5H3c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm-1 11H4V8h12v8zm5-7.5l-3 3v1l3 3V8.5z" style="display:none;"/><path d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4z"/></svg>
+    </div>
 </header>
-<main class="flex flex-col items-center justify-center p-6 w-full">
-<div class="w-full max-w-container-max-width bg-surface-container-lowest rounded-xl ambient-shadow p-8 flex flex-col items-center border border-surface-variant relative z-10">
-<div class="w-24 h-24 rounded-full bg-error-container glow-effect flex items-center justify-center mb-stack-lg border-4 border-surface-container-lowest shadow-sm z-20">
-<span class="material-symbols-outlined filled text-error" data-icon="lock" style="font-size: 48px;">lock</span>
-</div>
-<div class="text-center w-full mb-stack-lg flex flex-col items-center justify-center">
-<h1 class="text-headline-lg font-headline-lg md:text-headline-xl md:font-headline-xl text-primary mb-stack-sm text-center">
-                    Erişim Kısıtlandı
-                </h1>
-<p class="text-body-md font-body-md text-secondary px-4 text-center">
-                    Bu bilgisayar PolyOS Lab politikaları gereği veya öğretmeniniz tarafından kilitlenmiştir.
-                </p>
-</div>
-<div class="mt-stack-lg text-center w-full">
-<p class="text-label-sm font-label-sm text-secondary flex items-center justify-center gap-2">
-<span class="material-symbols-outlined" data-icon="info" style="font-size: 16px;">info</span>
-                   Kilit açma yetkisi yalnızca öğretmendedir.
-               </p>
-</div>
-</div>
-</main>
-<footer class="fixed bottom-0 w-full flex flex-col items-center pb-8 gap-2 bg-transparent z-0">
-<div class="flex gap-4 mb-2">
-<a class="text-label-sm font-label-sm text-secondary hover:text-primary transition-colors" href="#">Yardım</a>
-<a class="text-label-sm font-label-sm text-secondary hover:text-primary transition-colors" href="#">Güvenlik Bildirimi</a>
-</div>
-<div class="text-label-sm font-label-sm font-medium text-secondary">
-            Developed by Emirhan Gök
+<main>
+    <div class="card">
+        <div class="icon-container">
+            <svg width="48" height="48" viewBox="0 0 24 24" style="color: #ba1a1a;"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1 .9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
         </div>
+        <h1 class="title">Erişim Kısıtlandı</h1>
+        <p class="subtitle">Bu bilgisayar PolyOS Lab politikaları gereği veya öğretmeniniz tarafından kilitlenmiştir.</p>
+        <div class="info-text">
+            <svg width="16" height="16" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+            <span>Kilit açma yetkisi yalnızca öğretmendedir.</span>
+        </div>
+    </div>
+</main>
+<footer>
+    <div class="footer-links">
+        <a href="#">Yardım</a>
+        <a href="#">Güvenlik Bildirimi</a>
+    </div>
+    <div class="footer-copy">Developed by Emirhan Gök</div>
 </footer>
-</body></html>`
+</body>
+</html>`
 
 	tmpHTML := filepath.Join(os.TempDir(), "polyos_lock.html")
 	_ = os.WriteFile(tmpHTML, []byte(htmlContent), 0644)
@@ -883,10 +897,10 @@ func startLockOverlay() {
 		lockOverlayCmd = cmd
 	} else {
 		browsers := [][]string{
+			{"firefox", "--new-instance", "--profile", "/tmp/polyos_lock_firefox", "--kiosk", "file://" + tmpHTML},
 			{"chromium-browser", "--kiosk", "--user-data-dir=/tmp/polyos_lock_chrome", "--app=file://" + tmpHTML},
 			{"chromium", "--kiosk", "--user-data-dir=/tmp/polyos_lock_chrome", "--app=file://" + tmpHTML},
 			{"google-chrome", "--kiosk", "--user-data-dir=/tmp/polyos_lock_chrome", "--app=file://" + tmpHTML},
-			{"firefox", "--new-instance", "--profile", "/tmp/polyos_lock_firefox", "--kiosk", "file://" + tmpHTML},
 		}
 
 		for _, b := range browsers {
@@ -1009,10 +1023,10 @@ func startScreenShareViewer() {
 
 	// Tarayıcıları kiosk modunda başlat
 	browsers := [][]string{
+		{"firefox", "--new-instance", "--profile", "/tmp/polyos_share_firefox", "--kiosk", shareURL},
 		{"chromium-browser", "--kiosk", "--no-first-run", "--no-default-browser-check", "--user-data-dir=/tmp/polyos_share_chrome", shareURL},
 		{"chromium", "--kiosk", "--no-first-run", "--no-default-browser-check", "--user-data-dir=/tmp/polyos_share_chrome", shareURL},
 		{"google-chrome", "--kiosk", "--no-first-run", "--no-default-browser-check", "--user-data-dir=/tmp/polyos_share_chrome", shareURL},
-		{"firefox", "--new-instance", "--profile", "/tmp/polyos_share_firefox", "--kiosk", shareURL},
 	}
 
 	for _, b := range browsers {
@@ -1113,12 +1127,20 @@ func runSystemCommand(action string) {
 		} else {
 			iptablesPath := findExecutable("iptables")
 			ip6tablesPath := findExecutable("ip6tables")
+			serverIP := getServerIP()
 
 			// Create custom POLYOS_BLOCK chain (IPv4) and reject non-local traffic
 			_ = exec.Command(iptablesPath, "-N", "POLYOS_BLOCK").Run()
 			_ = exec.Command(iptablesPath, "-F", "POLYOS_BLOCK").Run()
 			_ = exec.Command(iptablesPath, "-A", "POLYOS_BLOCK", "-o", "lo", "-j", "ACCEPT").Run()
 			_ = exec.Command(iptablesPath, "-A", "POLYOS_BLOCK", "-i", "lo", "-j", "ACCEPT").Run()
+			
+			// Whitelist resolved server IP specifically first
+			if serverIP != "" && serverIP != "localhost" && serverIP != "127.0.0.1" {
+				_ = exec.Command(iptablesPath, "-A", "POLYOS_BLOCK", "-d", serverIP, "-j", "ACCEPT").Run()
+				_ = exec.Command(iptablesPath, "-A", "POLYOS_BLOCK", "-s", serverIP, "-j", "ACCEPT").Run()
+			}
+
 			_ = exec.Command(iptablesPath, "-A", "POLYOS_BLOCK", "-d", "192.168.0.0/16", "-j", "ACCEPT").Run()
 			_ = exec.Command(iptablesPath, "-A", "POLYOS_BLOCK", "-s", "192.168.0.0/16", "-j", "ACCEPT").Run()
 			_ = exec.Command(iptablesPath, "-A", "POLYOS_BLOCK", "-d", "10.0.0.0/8", "-j", "ACCEPT").Run()
