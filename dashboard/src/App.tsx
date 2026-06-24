@@ -1963,6 +1963,34 @@ function App() {
                   <option value="settings">Ayarlar</option>
                 </select>
               </div>
+
+              <hr style={{ border: 'none', borderTop: '1px solid var(--color-border)', margin: '15px 0' }} />
+
+              <div style={{ padding: '20px', borderRadius: '12px', border: '1px solid var(--color-border)', backgroundColor: 'var(--color-background-soft, #f8fafc)' }}>
+                <h4 style={{ margin: '0 0 14px 0', fontSize: '13px', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Platform ve Sistem Bilgileri</h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '13px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(0,0,0,0.03)', paddingBottom: '6px' }}>
+                    <span style={{ color: 'var(--color-text-secondary)' }}>Ürün Adı:</span>
+                    <span style={{ fontWeight: 600 }}>PolyOS Lab</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(0,0,0,0.03)', paddingBottom: '6px' }}>
+                    <span style={{ color: 'var(--color-text-secondary)' }}>Sürüm (Version):</span>
+                    <span style={{ fontWeight: 600, color: '#3b82f6' }}>v1.2.0</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(0,0,0,0.03)', paddingBottom: '6px' }}>
+                    <span style={{ color: 'var(--color-text-secondary)' }}>Geliştirici (Developer):</span>
+                    <span style={{ fontWeight: 600 }}>Emirhan Gök (PolyOS Dev)</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(0,0,0,0.03)', paddingBottom: '6px' }}>
+                    <span style={{ color: 'var(--color-text-secondary)' }}>Proje Reposu (Repository):</span>
+                    <a href="https://github.com/Emiran404/PolyOS-Lab" target="_blank" rel="noreferrer" style={{ color: '#3b82f6', textDecoration: 'none', fontWeight: 600 }}>GitHub / PolyOS-Lab</a>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--color-text-secondary)' }}>Teknoloji Altyapısı:</span>
+                    <span style={{ fontWeight: 500, color: 'var(--color-text-muted)' }}>React / Vite / Electron / Go (Golang)</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         );
