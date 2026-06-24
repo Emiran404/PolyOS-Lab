@@ -1926,9 +1926,9 @@ function App() {
                   onChange={(e) => handleQualityChange(e.target.value)}
                   style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--color-border)', fontSize: '14px', backgroundColor: '#fff', outline: 'none' }}
                 >
-                  <option value="quality_low">Düşük (Hızlı)</option>
-                  <option value="quality_medium">Orta (Önerilen)</option>
-                  <option value="quality_high">Yüksek (Ayrıntılı)</option>
+                  <option value="quality_low">Düşük (%15)</option>
+                  <option value="quality_medium">Orta (%30)</option>
+                  <option value="quality_high">Yüksek (%60)</option>
                 </select>
               </div>
             </div>

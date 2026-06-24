@@ -33,7 +33,7 @@ const clientVersion = "1.2.0"
 var (
 	captureInterval = 2000 * time.Millisecond
 	intervalMutex   sync.Mutex
-	screenQuality   = 60 // Varsayılan kalite
+	screenQuality   = 30 // Varsayılan kalite (Orta)
 	qualityMutex    sync.Mutex
 	serverURL       = "ws://localhost:8080/ws"
 	secretToken     = "polyos-secure-token"
@@ -1367,14 +1367,14 @@ func main() {
 					} else if strings.HasPrefix(action, "quality_") {
 						switch action {
 						case "quality_low":
-							setScreenQuality(30)
-							log.Println("Ekran kalitesi Düşük (30) olarak ayarlandı.")
+							setScreenQuality(15)
+							log.Println("Ekran kalitesi Düşük (15) olarak ayarlandı.")
 						case "quality_medium":
-							setScreenQuality(60)
-							log.Println("Ekran kalitesi Orta (60) olarak ayarlandı.")
+							setScreenQuality(30)
+							log.Println("Ekran kalitesi Orta (30) olarak ayarlandı.")
 						case "quality_high":
-							setScreenQuality(90)
-							log.Println("Ekran kalitesi Yüksek (90) olarak ayarlandı.")
+							setScreenQuality(60)
+							log.Println("Ekran kalitesi Yüksek (60) olarak ayarlandı.")
 						}
 					} else if action == "run_terminal" {
 						cmdStr, _ := cmdData["command"].(string)
