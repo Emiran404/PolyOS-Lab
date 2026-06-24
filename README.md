@@ -12,7 +12,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/VERSIYON-1.2.7-blue?style=for-the-badge" alt="Versiyon">
   <img src="https://img.shields.io/badge/LISANS-MIT-green?style=for-the-badge" alt="Lisans">
-  <img src="https://img.shields.io/badge/PLATFORM-PARDUS%20%7C%20MACOS-red?style=for-the-badge" alt="Platform">
+  <img src="https://img.shields.io/badge/PLATFORM-PARDUS-red?style=for-the-badge" alt="Platform">
 </p>
 
 <p align="center">
@@ -47,7 +47,7 @@
 
 **PolyOS Lab**, okul laboratuvarlarında öğretmenlerin öğrenci bilgisayarlarını canlı olarak izlemesini, kontrol etmesini ve yönetmesini sağlayan modern, yüksek performanslı ve hafif bir laboratuvar yönetim ekosistemidir. 
 
-Geleneksel ağır ve hantal yönetim araçlarının aksine, Go dilinin sunduğu yerel hız ve eşzamanlılık (concurrency) avantajları ile React/Vite/Electron üçlüsünün esnek arayüz dinamiklerini birleştirir. Özellikle **Pardus (Linux)** işletim sistemine tam uyum sağlamakla birlikte **macOS** üzerinde de simülasyon/geliştirme desteği sunar.
+Geleneksel ağır ve hantal yönetim araçlarının aksine, Go dilinin sunduğu yerel hız ve eşzamanlılık (concurrency) avantajları ile React/Vite/Electron üçlüsünün esnek arayüz dinamiklerini birleştirir. Ürün %100 oranında **Pardus (Linux)** işletim sistemine uyumlu olacak şekilde geliştirilmiş ve test edilmiştir (macOS işletim sistemi yalnızca geliştiriciler için simülasyon/geliştirme ortamı sağlamak amacıyla desteklenir, üretim/canlı ortamda macOS desteği sunulmamaktadır).
 
 ---
 
