@@ -47,8 +47,18 @@ let pingHistory: Array<{ success: boolean; latency: number }> = [];
 
 function App() {
   const [clients, setClients] = useState<Client[]>([]);
-  const [activeTab, setActiveTab] = useState('summary');
+  const [activeTab, setActiveTab] = useState(() => {
+    return localStorage.getItem('defaultStartTab') || 'summary';
+  });
+  const [defaultStartTab, setDefaultStartTab] = useState(() => {
+    return localStorage.getItem('defaultStartTab') || 'summary';
+  });
   const [logs, setLogs] = useState<string[]>([]);
+
+  const handleDefaultStartTabChange = (val: string) => {
+    setDefaultStartTab(val);
+    localStorage.setItem('defaultStartTab', val);
+  };
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [refreshTicker, setRefreshTicker] = useState(0);
 
@@ -1929,6 +1939,28 @@ function App() {
                   <option value="quality_low">Düşük (%15)</option>
                   <option value="quality_medium">Orta (%30)</option>
                   <option value="quality_high">Yüksek (%60)</option>
+                </select>
+              </div>
+
+              <hr style={{ border: 'none', borderTop: '1px solid var(--color-border)', margin: '10px 0' }} />
+
+              <div>
+                <label style={{ display: 'block', fontWeight: 600, marginBottom: '8px' }}>Varsayılan Açılış Sekmesi</label>
+                <select 
+                  value={defaultStartTab}
+                  onChange={(e) => handleDefaultStartTabChange(e.target.value)}
+                  style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--color-border)', fontSize: '14px', backgroundColor: '#fff', outline: 'none' }}
+                >
+                  <option value="summary">Laboratuvar Özeti</option>
+                  <option value="health_map">Sağlık Haritası</option>
+                  <option value="quick_actions">Hızlı İşlemler</option>
+                  <option value="network_management">Ağ Yönetimi</option>
+                  <option value="clients">İstemci Listesi</option>
+                  <option value="screen">Ekran İzleme</option>
+                  <option value="files">Dosya Transferi</option>
+                  <option value="polyos_wake">PolyOS Wake</option>
+                  <option value="logs">Sistem Logları</option>
+                  <option value="settings">Ayarlar</option>
                 </select>
               </div>
             </div>
