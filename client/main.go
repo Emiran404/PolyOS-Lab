@@ -28,7 +28,7 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-const clientVersion = "1.2.0"
+const clientVersion = "1.2.9"
 
 var (
 	captureInterval = 2000 * time.Millisecond
@@ -1552,17 +1552,58 @@ func main() {
 	}
 }
 
+var (
+	terminalCwd      string
+	terminalCwdMutex sync.Mutex
+)
+
 func executeTerminalCommand(cmdStr, cmdID string) {
 	log.Printf("[Terminal] Komut çalıştırılıyor: %s\n", cmdStr)
+	
+	terminalCwdMutex.Lock()
+	if terminalCwd == "" {
+		if home, err := os.UserHomeDir(); err == nil {
+			terminalCwd = home
+		} else {
+			terminalCwd = "/"
+		}
+	}
+	currentDir := terminalCwd
+	terminalCwdMutex.Unlock()
+
 	var cmd *exec.Cmd
 	if runtime.GOOS == "windows" {
-		cmd = exec.Command("cmd", "/c", cmdStr)
+		wrappedCmd := fmt.Sprintf("%s & echo. & echo POLYOS_CWD: & cd", cmdStr)
+		cmd = exec.Command("cmd", "/c", wrappedCmd)
 	} else {
-		cmd = exec.Command("/bin/sh", "-c", cmdStr)
+		wrappedCmd := fmt.Sprintf("%s; echo ''; echo 'POLYOS_CWD:'; pwd", cmdStr)
+		cmd = exec.Command("/bin/sh", "-c", wrappedCmd)
 	}
+	
+	cmd.Dir = currentDir
 
 	out, err := cmd.CombinedOutput()
 	outputStr := string(out)
+
+	var newCwd string
+	cwdMarker := "POLYOS_CWD:"
+	if idx := strings.LastIndex(outputStr, cwdMarker); idx != -1 {
+		part := outputStr[idx+len(cwdMarker):]
+		part = strings.TrimSpace(part)
+		if part != "" {
+			newCwd = part
+			outputStr = outputStr[:idx]
+			outputStr = strings.TrimRight(outputStr, "\r\n")
+		}
+	}
+
+	if newCwd != "" {
+		terminalCwdMutex.Lock()
+		terminalCwd = newCwd
+		terminalCwdMutex.Unlock()
+		log.Printf("[Terminal] Yeni dizin: %s\n", newCwd)
+	}
+
 	if err != nil && outputStr == "" {
 		outputStr = "Hata: " + err.Error()
 	}

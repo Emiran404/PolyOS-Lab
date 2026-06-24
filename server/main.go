@@ -826,8 +826,18 @@ func handleUpload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Dosyanın indirilebileceği url
-	downloadURL := fmt.Sprintf("http://localhost:8080/uploads/%s", handler.Filename)
+	// Get the real LAN IP address of the teacher's server
+	serverIP := getLocalIP()
+	if serverIP == "" {
+		serverIP = "localhost"
+	}
+	
+	port := "8080"
+	if parts := strings.Split(r.Host, ":"); len(parts) > 1 {
+		port = parts[1]
+	}
+
+	downloadURL := fmt.Sprintf("http://%s:%s/uploads/%s", serverIP, port, handler.Filename)
 
 	// İstemciye/İstemcilere indir komutu gönder
 	transferMsg := map[string]string{
