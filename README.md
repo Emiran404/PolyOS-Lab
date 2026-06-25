@@ -57,21 +57,52 @@ Geleneksel hantal yönetim yazılımlarının aksine, Go dilinin sunduğu yerel 
 
 ---
 
-## 🖼️ Ekran Görüntüleri
+## 🖼️ Ekran Görüntüleri (Galeri)
 
-### 🖥️ Öğretmen Kontrol Paneli - Genel Bakış
-Aynı anda düzinelerce öğrenci istemcisini gerçek zamanlı (canlı yayın) olarak izleyin, tek tıkla toplu işlemler gerçekleştirin veya istemcileri yönetin.
+<details>
+<summary><b>🖥️ Ana Kontrol Paneli ve İstemci Listesi (Detayları Göster)</b></summary>
 
-<p align="center">
-  <img src="assets/screenshot1.png" width="90%" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);" alt="Öğretmen Paneli Genel Bakış">
-</p>
+| Öğretmen Kontrol Paneli | İstemci Listesi |
+| --- | --- |
+| ![Öğretmen Dashboard](assets/PolyOSLab-ÖğretmenDashboard.png) | ![İstemci Listesi](assets/PolyOSLab-İstemciListesi.png) |
 
-### 📁 Hızlı İşlemler & Dosya Transferi
-Seçili öğrenci bilgisayarlarına veya tüm sınıfa sürükle-bırak yöntemiyle saniyeler içinde dosya gönderin, interneti/USB'yi kilitleyin ya da bilgisayarları uzaktan açıp kapatın.
+</details>
 
-<p align="center">
-  <img src="assets/screenshot2.png" width="90%" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);" alt="Hızlı İşlemler Paneli">
-</p>
+<details>
+<summary><b>📺 Ekran İzleme ve Hızlı İşlemler (Detayları Göster)</b></summary>
+
+| Ekran İzleme | Hızlı İşlemler |
+| --- | --- |
+| ![Ekran İzleme](assets/PolyOSLab-Ekranİzleme.png) | ![Hızlı İşlemler](assets/PolyOSLab-Hızlıİşlemler.png) |
+
+</details>
+
+<details>
+<summary><b>📁 Dosya Transferi ve Ağ Yönetimi (Detayları Göster)</b></summary>
+
+| Dosya Transferi | Ağ Yönetimi |
+| --- | --- |
+| ![Dosya Transferi](assets/PolyOSLab-DosyaTransferi.png) | ![Ağ Yönetimi](assets/PolyOSLab-AğYönetimi.png) |
+
+</details>
+
+<details>
+<summary><b>⚡ PolyOS Wake ve Sağlık Haritası (Detayları Göster)</b></summary>
+
+| PolyOS Wake | Sistem Sağlık Haritası |
+| --- | --- |
+| ![PolyOS Wake](assets/PolyOSLab-PolyOSWake.png) | ![Sağlık Haritası](assets/PolyOSLab-SağlıkHaritası.png) |
+
+</details>
+
+<details>
+<summary><b>⚙️ Ayarlar ve Log Kayıtları (Detayları Göster)</b></summary>
+
+| Genel Ayarlar | Ayarlar Devamı | Log Kayıtları |
+| --- | --- | --- |
+| ![Ayarlar](assets/PolyOSLab-Ayarlar.png) | ![Ayarlar Devamı](assets/PolyOSLab-AyarlarDevamı.png) | ![Log Kayıtları](assets/PolyOSLab-LogKayıtları.png) |
+
+</details>
 
 ---
 
