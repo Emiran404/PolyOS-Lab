@@ -29,7 +29,7 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-const clientVersion = "1.3.7"
+const clientVersion = "1.3.8"
 
 var (
 	captureInterval = 2000 * time.Millisecond
@@ -46,7 +46,7 @@ var (
 	wsWriteMutex    sync.Mutex
 	lockOverlayCmd  *exec.Cmd
 	lockMutex       sync.Mutex
-	shareTechnology = "native_python" // "native_python" veya "browser"
+	shareTechnology = "vnc" // "native_python", "browser" veya "vnc"
 	shareTechMutex  sync.RWMutex
 )
 

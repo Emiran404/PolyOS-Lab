@@ -1,3 +1,20 @@
+# PolyOS Lab v1.3.8 - Sürüm Açıklaması
+
+🎉 **PolyOS Lab v1.3.8**
+
+Bu sürüm; istemci VNC başlangıç varsayılanlarını düzenler ve çoklu dosya transferini kolaylaştırmak amacıyla sürükle-bırak (drag & drop) dosya yükleme desteği ile seçili istemcilere dosya yansıtma seçeneklerini arayüze ekler.
+
+---
+
+## 🚀 Yenilikler ve İyileştirmeler
+
+### 🖱️ Sürükle-Bırak (Drag & Drop) Dosya Transferi
+* **Kolaylaştırılmış Gönderim:** Öğretmen panelindeki ana İstemci Listesi gridi veya Ekran İzleme gridi üzerinde yer alan herhangi bir öğrenci kartının üstüne masaüstünden bir dosyayı sürükleyip bırakarak o öğrenciye otomatik olarak dosya gönderme desteği getirildi.
+* **Seçili İstemcilere Toplu Gönderim:** Hızlı İşlemler panelinde seçilen 3-5 öğrenciye tek seferde dosya göndermek için Dosya Transferi sekmesine "Seçili İstemciler (X cihaz)" seçeneği eklendi. Cihazlar seçildiğinde bu seçenek otomatik olarak aktifleşir ve dosya sadece seçilen cihazlara gönderilir. Sunucu backend tarafında virgülle ayrılmış hedef listesi çözümleme yeteneği eklendi.
+* **Varsayılan VNC Sunucu Başlangıcı:** İstemci ilk kez kurulduğunda veya sıfırdan açıldığında VNC ekran akışının doğrudan çalışabilmesi amacıyla, istemci içi varsayılan ekran paylaşım teknolojisi `vnc` olarak ayarlandı.
+
+---
+
 # PolyOS Lab v1.3.7 - Sürüm Açıklaması
 
 🎉 **PolyOS Lab v1.3.7**

@@ -334,6 +334,14 @@ function App() {
   const [messageModalOpen, setMessageModalOpen] = useState(false);
   const [messageText, setMessageText] = useState('');
 
+  useEffect(() => {
+    if (selectedClientIds.length > 0) {
+      setTargetClient('selected');
+    } else {
+      setTargetClient('all');
+    }
+  }, [selectedClientIds]);
+
   // Ağ Yönetimi State'leri
   const [internetStatus, setInternetStatus] = useState<'enabled' | 'disabled'>('enabled');
   const [forbiddenWebsites, setForbiddenWebsites] = useState<string[]>(() => {
@@ -705,13 +713,44 @@ function App() {
     }
   };
 
+  const uploadFileToTarget = async (file: File, target: string) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('target', target);
+
+    try {
+      const response = await fetch('http://localhost:8080/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      if (response.ok) {
+        alert(`"${file.name}" dosyası hedeflenen istemcilere başarıyla gönderildi.`);
+      } else {
+        alert("Dosya gönderilemedi.");
+      }
+    } catch (error) {
+      console.error("Upload error:", error);
+      alert("Dosya gönderilirken bir hata oluştu.");
+    }
+  };
+
   const handleFileUpload = async () => {
     if (!selectedFile) return;
     
     setUploadStatus('uploading');
     const formData = new FormData();
     formData.append('file', selectedFile);
-    formData.append('target', targetClient);
+    
+    let target = targetClient;
+    if (targetClient === 'selected') {
+      if (selectedClientIds.length === 0) {
+        alert("Lütfen en az bir istemci seçin.");
+        setUploadStatus('idle');
+        return;
+      }
+      target = selectedClientIds.join(',');
+    }
+    formData.append('target', target);
 
     try {
       const response = await fetch('http://localhost:8080/api/upload', {
@@ -1472,6 +1511,28 @@ function App() {
                         e.stopPropagation();
                         startRemoteControl(client);
                       }}
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        e.currentTarget.style.borderColor = 'var(--primary)';
+                        e.currentTarget.style.boxShadow = '0 0 10px rgba(13, 148, 136, 0.3)';
+                      }}
+                      onDragLeave={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        e.currentTarget.style.borderColor = isSelected ? 'var(--primary)' : 'var(--color-border)';
+                        e.currentTarget.style.boxShadow = 'none';
+                      }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        e.currentTarget.style.borderColor = isSelected ? 'var(--primary)' : 'var(--color-border)';
+                        e.currentTarget.style.boxShadow = 'none';
+                        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                          const file = e.dataTransfer.files[0];
+                          uploadFileToTarget(file, client.id);
+                        }
+                      }}
                       style={{
                         position: 'relative',
                         borderRadius: '10px',
@@ -1903,7 +1964,33 @@ function App() {
                 </div>
               ) : (
                 clients.map(client => (
-                  <div key={client.id} className="client-item" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '12px', padding: '12px' }}>
+                  <div 
+                    key={client.id} 
+                    className="client-item" 
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      e.currentTarget.style.borderColor = 'var(--primary)';
+                      e.currentTarget.style.boxShadow = '0 0 10px rgba(13, 148, 136, 0.3)';
+                    }}
+                    onDragLeave={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      e.currentTarget.style.borderColor = 'transparent';
+                      e.currentTarget.style.boxShadow = 'none';
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      e.currentTarget.style.borderColor = 'transparent';
+                      e.currentTarget.style.boxShadow = 'none';
+                      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                        const file = e.dataTransfer.files[0];
+                        uploadFileToTarget(file, client.id);
+                      }
+                    }}
+                    style={{ flexDirection: 'column', alignItems: 'stretch', gap: '12px', padding: '12px' }}
+                  >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <span style={{ fontWeight: 600, fontSize: '14px' }}>{client.hostname}</span>
                       <span style={{ backgroundColor: '#ecfdf5', color: '#059669', padding: '2px 8px', borderRadius: '10px', fontSize: '11px', fontWeight: 500 }}>Canlı</span>
@@ -2030,6 +2117,9 @@ function App() {
                   onChange={(e) => setTargetClient(e.target.value)}
                   style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--color-border)', fontSize: '14px', backgroundColor: '#fff', outline: 'none' }}
                 >
+                  {selectedClientIds.length > 0 && (
+                    <option value="selected">Seçili İstemciler ({selectedClientIds.length} cihaz)</option>
+                  )}
                   <option value="all">Tüm İstemciler ({clients.length} cihaz)</option>
                   {clients.map(c => (
                     <option key={c.id} value={c.id}>{c.hostname} ({c.id})</option>

@@ -958,11 +958,21 @@ func handleUpload(w http.ResponseWriter, r *http.Request) {
 		}
 		log.Printf("Dosya transfer bildirimi tüm cihazlara gönderildi: %s\n", handler.Filename)
 	} else {
-		client, exists := clients[target]
-		if exists {
-			_ = client.Conn.WriteJSON(transferMsg)
-			log.Printf("Dosya transfer bildirimi şuraya gönderildi: %s -> %s\n", client.Hostname, handler.Filename)
-		} else {
+		targets := strings.Split(target, ",")
+		foundAny := false
+		for _, t := range targets {
+			t = strings.TrimSpace(t)
+			if t == "" {
+				continue
+			}
+			client, exists := clients[t]
+			if exists {
+				_ = client.Conn.WriteJSON(transferMsg)
+				log.Printf("Dosya transfer bildirimi şuraya gönderildi: %s -> %s\n", client.Hostname, handler.Filename)
+				foundAny = true
+			}
+		}
+		if !foundAny {
 			http.Error(w, "Hedef istemci bulunamadı", http.StatusNotFound)
 			return
 		}
