@@ -1,8 +1,10 @@
-<p align="center">
-  <img src="https://raw.githubusercontent.com/Emiran404/PolyOS-Lab/main/dashboard/public/favicon.svg" width="120" height="120" alt="PolyOS Lab Logo">
-</p>
-
-<h1 align="center">🎓 PolyOS Lab</h1>
+```text
+####   ###  #     #   #  ###   ####      #      ###  #    
+#   # #   # #     #   # #   # #          #         # #    
+####  #   # #      ###  #   #  ###       #      #### #### 
+#     #   # #       #   #   #     #      #     #   # #   #
+#      ###  ####    #    ###  ####       ####   #### ####
+```
 
 <p align="center">
   <strong>Eğitim kurumları ve bilgisayar laboratuvarları için modern, güvenli ve anlık yönetim ekosistemi.</strong>
