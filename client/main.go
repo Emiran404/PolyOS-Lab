@@ -46,6 +46,8 @@ var (
 	wsWriteMutex    sync.Mutex
 	lockOverlayCmd  *exec.Cmd
 	lockMutex       sync.Mutex
+	shareTechnology = "native_python" // "native_python" veya "browser"
+	shareTechMutex  sync.RWMutex
 )
 
 func safeWriteJSON(data interface{}) error {
@@ -106,8 +108,9 @@ func (w *clientLogWriter) Write(p []byte) (n int, err error) {
 }
 
 type ClientConfig struct {
-	ServerURL   string `json:"server_url"`
-	SecretToken string `json:"secret_token"`
+	ServerURL       string `json:"server_url"`
+	SecretToken     string `json:"secret_token"`
+	ShareTechnology string `json:"share_technology"`
 }
 
 func getConfigPath() string {
@@ -143,6 +146,11 @@ func loadConfig() {
 	}
 	if config.SecretToken != "" {
 		secretToken = config.SecretToken
+	}
+	if config.ShareTechnology != "" {
+		shareTechMutex.Lock()
+		shareTechnology = config.ShareTechnology
+		shareTechMutex.Unlock()
 	}
 	log.Println("Yapılandırma başarıyla yüklendi. Sunucu:", serverURL)
 }
@@ -1040,6 +1048,34 @@ func startScreenShareViewer() {
 	}
 
 	shareURL := getShareURL()
+	
+	shareTechMutex.RLock()
+	currentTech := shareTechnology
+	shareTechMutex.RUnlock()
+
+	if currentTech == "browser" {
+		log.Printf("[ScreenShare] Tarayıcı üzerinden yansıtma başlatılıyor: %s\n", shareURL)
+		firefoxProfileDir := "/tmp/polyos_share_firefox"
+		_ = os.MkdirAll(firefoxProfileDir, 0777)
+		_ = os.Chmod(firefoxProfileDir, 0777)
+
+		browsers := [][]string{
+			{"firefox", "--new-instance", "--profile", firefoxProfileDir, "--kiosk", shareURL},
+			{"chromium-browser", "--kiosk", "--no-first-run", "--no-default-browser-check", "--user-data-dir=/tmp/polyos_share_chrome", shareURL},
+			{"chromium", "--kiosk", "--no-first-run", "--no-default-browser-check", "--user-data-dir=/tmp/polyos_share_chrome", shareURL},
+			{"google-chrome", "--kiosk", "--no-first-run", "--no-default-browser-check", "--user-data-dir=/tmp/polyos_share_chrome", shareURL},
+		}
+
+		for _, b := range browsers {
+			c, err := runAndMonitorGUICommand("ScreenShareBrowser", b[0], b[1:]...)
+			if err == nil {
+				screenShareCmd = c
+				break
+			}
+		}
+		return
+	}
+
 	// Reconstruct WebSocket share URL for student stream: ws://<server_ip>:<port>/ws/student-viewer
 	wsShareURL := strings.Replace(shareURL, "http://", "ws://", 1)
 	wsShareURL = strings.Replace(wsShareURL, "https://", "wss://", 1)
@@ -1642,6 +1678,16 @@ func main() {
 							setScreenQuality(60)
 							log.Println("Ekran kalitesi Yüksek (60) olarak ayarlandı.")
 						}
+					} else if strings.HasPrefix(action, "set_tech_") {
+						shareTechMutex.Lock()
+						if action == "set_tech_browser" {
+							shareTechnology = "browser"
+							log.Println("Ekran Paylaşım Teknolojisi: Kiosk Tarayıcı olarak ayarlandı.")
+						} else if action == "set_tech_python" {
+							shareTechnology = "native_python"
+							log.Println("Ekran Paylaşım Teknolojisi: Yerel Python (Tkinter) olarak ayarlandı.")
+						}
+						shareTechMutex.Unlock()
 					} else if action == "run_terminal" {
 						cmdStr, _ := cmdData["command"].(string)
 						cmdID, _ := cmdData["command_id"].(string)

@@ -204,6 +204,11 @@ function App() {
   // Pardus Ekran Akış Kalitesi State'i
   const [streamQuality, setStreamQuality] = useState('quality_medium');
 
+  // Görüntü Sistem Teknoloji Seçeneği State'i
+  const [shareTechnology, setShareTechnology] = useState(() => {
+    return localStorage.getItem('shareTechnology') || 'set_tech_python';
+  });
+
   // Hızlı İşlemler (Epoptes) State'leri
   const [selectedClientIds, setSelectedClientIds] = useState<string[]>([]);
   const [webUrlModalOpen, setWebUrlModalOpen] = useState(false);
@@ -799,6 +804,12 @@ function App() {
   const handleQualityChange = (newQuality: string) => {
     setStreamQuality(newQuality);
     sendToAll(newQuality);
+  };
+
+  const handleShareTechChange = (newTech: string) => {
+    setShareTechnology(newTech);
+    localStorage.setItem('shareTechnology', newTech);
+    sendToAll(newTech);
   };
 
   const sendCommandToSelected = (command: string) => {
@@ -1991,6 +2002,20 @@ function App() {
               <hr style={{ border: 'none', borderTop: '1px solid var(--color-border)', margin: '10px 0' }} />
 
               <div>
+                <label style={{ display: 'block', fontWeight: 600, marginBottom: '8px' }}>Ekran Yansıtma Teknolojisi</label>
+                <select 
+                  value={shareTechnology}
+                  onChange={(e) => handleShareTechChange(e.target.value)}
+                  style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--color-border)', fontSize: '14px', backgroundColor: '#fff', outline: 'none' }}
+                >
+                  <option value="set_tech_python">Yerel Python Tkinter (Tavsiye Edilen - Tam Ekran Garantili)</option>
+                  <option value="set_tech_browser">Kiosk Tarayıcı (Firefox / Chrome)</option>
+                </select>
+              </div>
+
+              <hr style={{ border: 'none', borderTop: '1px solid var(--color-border)', margin: '10px 0' }} />
+
+              <div>
                 <label style={{ display: 'block', fontWeight: 600, marginBottom: '8px' }}>Varsayılan Açılış Sekmesi</label>
                 <select 
                   value={defaultStartTab}
@@ -2021,7 +2046,7 @@ function App() {
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(0,0,0,0.03)', paddingBottom: '6px' }}>
                     <span style={{ color: 'var(--color-text-secondary)' }}>Sürüm (Version):</span>
-                    <span style={{ fontWeight: 600, color: '#3b82f6' }}>v1.3.1</span>
+                    <span style={{ fontWeight: 600, color: '#3b82f6' }}>v1.3.5</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(0,0,0,0.03)', paddingBottom: '6px' }}>
                     <span style={{ color: 'var(--color-text-secondary)' }}>Geliştirici (Developer):</span>
