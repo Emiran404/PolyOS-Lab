@@ -34,7 +34,7 @@ const clientVersion = "1.3.11"
 var (
 	captureInterval = 2000 * time.Millisecond
 	intervalMutex   sync.Mutex
-	screenQuality   = 30 // Varsayılan kalite (Orta)
+	screenQuality   = 30 // Default medium quality level
 	qualityMutex    sync.Mutex
 	serverURL       = "ws://localhost:8080/ws"
 	secretToken     = "polyos-secure-token"
@@ -114,10 +114,6 @@ type ClientConfig struct {
 }
 
 func getConfigPath() string {
-	if runtime.GOOS == "darwin" {
-		home, _ := os.UserHomeDir()
-		return filepath.Join(home, ".config", "polyos", "client.json")
-	}
 	return "/etc/polyos/client.json"
 }
 
@@ -228,9 +224,6 @@ type TelemetryData struct {
 var lastCPUUser, lastCPUNice, lastCPUSystem, lastCPUIdle, lastCPUIowait, lastCPUIrq, lastCPUSoftirq uint64
 
 func getCPUUsage() float64 {
-	if runtime.GOOS == "darwin" {
-		return 15.0 + float64(time.Now().Unix()%20)
-	}
 
 	file, err := os.Open("/proc/stat")
 	if err != nil {
@@ -262,9 +255,6 @@ func getCPUUsage() float64 {
 }
 
 func getCPUTemp() float64 {
-	if runtime.GOOS == "darwin" {
-		return 42.0 + float64(time.Now().Unix()%10)
-	}
 
 	data, err := os.ReadFile("/sys/class/thermal/thermal_zone0/temp")
 	if err == nil {
@@ -284,12 +274,6 @@ func getCPUTemp() float64 {
 }
 
 func getRAMDetails() (float64, float64, float64) {
-	if runtime.GOOS == "darwin" {
-		total := 16.0
-		used := 8.0 + float64(time.Now().Unix()%4)
-		pct := (used / total) * 100.0
-		return pct, total, used
-	}
 
 	data, err := os.ReadFile("/proc/meminfo")
 	if err != nil {
@@ -330,9 +314,7 @@ func getDiskDetails() (float64, float64, float64) {
 		path = "C:\\"
 	}
 	
-	if runtime.GOOS == "darwin" {
-		return 35.0, 250.0, 87.5
-	}
+
 
 	var stat syscall.Statfs_t
 	err := syscall.Statfs(path, &stat)
@@ -352,21 +334,17 @@ func getDiskDetails() (float64, float64, float64) {
 }
 
 func setupLogging() {
-	if runtime.GOOS == "darwin" {
-		log.SetOutput(&clientLogWriter{})
-		return // macOS'ta normal terminal logu
-	}
 	
 	logDir := "/var/log"
 	logFilePath := filepath.Join(logDir, "polyos-client.log")
 	
-	// Klasörün varlığını kontrol et
+	// Ensure directory exists
 	_ = os.MkdirAll(logDir, 0755)
 	
 	var err error
 	logFile, err = os.OpenFile(logFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 	if err != nil {
-		// Log klasörüne yazılamazsa, temp klasörünü dene
+		// Fallback to temp directory if writing to var/log fails
 		tempLogPath := filepath.Join(os.TempDir(), "polyos-client.log")
 		logFile, err = os.OpenFile(tempLogPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 		if err == nil {
@@ -409,7 +387,7 @@ func getScreenQuality() int {
 	return screenQuality
 }
 
-// Hataları yakalayıp loglayan komut çalıştırma fonksiyonu
+// Run command and log any errors
 func runCommandWithLog(name string, arg ...string) {
 	cmd := exec.Command(name, arg...)
 	out, err := cmd.CombinedOutput()
@@ -418,13 +396,9 @@ func runCommandWithLog(name string, arg ...string) {
 	}
 }
 
-// Ekran çözünürlüğünü dönen fonksiyon
+// Get active display resolution
 func getScreenResolution() (int, int) {
-	if runtime.GOOS == "darwin" {
-		// macOS (Simüle test çözünürlüğü)
-		return 1440, 900
-	}
-	// Linux / Pardus
+	// Linux resolution discovery
 	out, err := exec.Command("xdotool", "getdisplaygeometry").Output()
 	if err == nil {
 		fields := strings.Fields(string(out))
@@ -487,13 +461,8 @@ func drawMockScreen() []byte {
 	return buf.Bytes()
 }
 
-// Ekran görüntüsü alan fonksiyon
+// Capture current screen image
 func captureScreen() []byte {
-	if runtime.GOOS == "darwin" {
-		// macOS'ta TCC ekran kaydetme izin pop-up'larını önlemek için mock resim dönüyoruz.
-		// Pardus/Linux'ta scrot sorunsuz şekilde gerçek ekran görüntüsü alır.
-		return drawMockScreen()
-	}
 
 	tmpFile := os.TempDir() + "/polyos_screen.jpg"
 	defer os.Remove(tmpFile)
@@ -648,9 +617,6 @@ func getXAuthorityPath(user string) string {
 }
 
 func runGUICommand(name string, arg ...string) *exec.Cmd {
-	if runtime.GOOS == "darwin" {
-		return exec.Command(name, arg...)
-	}
 
 	exePath := findExecutable(name)
 	userStr := getLoggedInGUIUser()
@@ -723,11 +689,6 @@ func sendSystemLogToServer(msg string) {
 }
 
 func killProcessByName(name string) {
-	if runtime.GOOS == "darwin" {
-		_ = exec.Command("killall", name).Run()
-		return
-	}
-	// Kill by binary name on Linux
 	_ = exec.Command("pkill", "-f", name).Run()
 }
 
@@ -739,7 +700,7 @@ func startLockOverlay() {
 		return
 	}
 
-	// Clean up any lingering lock screen browser instances first
+	// Terminate any lingering lock-screen browser windows
 	killProcessByName("firefox")
 	killProcessByName("chromium-browser")
 	killProcessByName("chromium")
@@ -921,37 +882,28 @@ func startLockOverlay() {
 	tmpHTML := filepath.Join(os.TempDir(), "polyos_lock.html")
 	_ = os.WriteFile(tmpHTML, []byte(htmlContent), 0644)
 
-	var cmd *exec.Cmd
-	if runtime.GOOS == "darwin" {
-		cmd = exec.Command("open", "-a", "Google Chrome", "--args", "--kiosk", "--user-data-dir=/tmp/polyos_lock_chrome", "--app=file://"+tmpHTML)
-		if err := cmd.Start(); err != nil {
-			cmd = exec.Command("open", tmpHTML)
-			_ = cmd.Start()
-		}
-		lockOverlayCmd = cmd
-	} else {
-		// Ensure the custom firefox profile directory exists and is accessible
-		firefoxProfileDir := "/tmp/polyos_lock_firefox"
-		_ = os.MkdirAll(firefoxProfileDir, 0777)
-		_ = os.Chmod(firefoxProfileDir, 0777)
+	// Ensure the custom firefox profile directory exists and is accessible
+	firefoxProfileDir := "/tmp/polyos_lock_firefox"
+	_ = os.MkdirAll(firefoxProfileDir, 0777)
+	_ = os.Chmod(firefoxProfileDir, 0777)
 
-		browsers := [][]string{
-			{"firefox", "--new-instance", "--profile", firefoxProfileDir, "--kiosk", "file://" + tmpHTML},
-			{"chromium-browser", "--kiosk", "--user-data-dir=/tmp/polyos_lock_chrome", "--app=file://" + tmpHTML},
-			{"chromium", "--kiosk", "--user-data-dir=/tmp/polyos_lock_chrome", "--app=file://" + tmpHTML},
-			{"google-chrome", "--kiosk", "--user-data-dir=/tmp/polyos_lock_chrome", "--app=file://" + tmpHTML},
-		}
+	browsers := [][]string{
+		{"firefox", "--new-instance", "--profile", firefoxProfileDir, "--kiosk", "file://" + tmpHTML},
+		{"chromium-browser", "--kiosk", "--user-data-dir=/tmp/polyos_lock_chrome", "--app=file://" + tmpHTML},
+		{"chromium", "--kiosk", "--user-data-dir=/tmp/polyos_lock_chrome", "--app=file://" + tmpHTML},
+		{"google-chrome", "--kiosk", "--user-data-dir=/tmp/polyos_lock_chrome", "--app=file://" + tmpHTML},
+	}
 
-		for _, b := range browsers {
-			c, err := runAndMonitorGUICommand("LockScreen", b[0], b[1:]...)
-			if err == nil {
-				lockOverlayCmd = c
-				break
-			}
+	for _, b := range browsers {
+		c, err := runAndMonitorGUICommand("LockScreen", b[0], b[1:]...)
+		if err == nil {
+			lockOverlayCmd = c
+			break
 		}
+	}
 
-		if lockOverlayCmd == nil {
-			pyCode := `import tkinter as tk
+	if lockOverlayCmd == nil {
+		pyCode := `import tkinter as tk
 root = tk.Tk()
 root.attributes('-fullscreen', True)
 root.configure(bg='white')
@@ -963,12 +915,11 @@ lbl_sub = tk.Label(root, text="Bu bilgisayar PolyOS Lab politikaları gereği ve
 lbl_sub.pack(expand=True, pady=(10, 150))
 root.mainloop()
 `
-			tmpPy := filepath.Join(os.TempDir(), "polyos_lock.py")
-			_ = os.WriteFile(tmpPy, []byte(pyCode), 0644)
-			c, err := runAndMonitorGUICommand("LockScreenPython", "python3", tmpPy)
-			if err == nil {
-				lockOverlayCmd = c
-			}
+		tmpPy := filepath.Join(os.TempDir(), "polyos_lock.py")
+		_ = os.WriteFile(tmpPy, []byte(pyCode), 0644)
+		c, err := runAndMonitorGUICommand("LockScreenPython", "python3", tmpPy)
+		if err == nil {
+			lockOverlayCmd = c
 		}
 	}
 }
@@ -991,10 +942,6 @@ func stopLockOverlay() {
 }
 
 func setInputsEnabled(enabled bool) {
-	if runtime.GOOS == "darwin" {
-		log.Printf("[MOCK] Girişler Etkin: %t\n", enabled)
-		return
-	}
 	val := "0"
 	if enabled {
 		val = "1"
@@ -1024,10 +971,6 @@ func setInputsEnabled(enabled bool) {
 }
 
 func blockUSBDevices(block bool) error {
-	if runtime.GOOS == "darwin" {
-		log.Printf("[MOCK] USB Engelleme: %t\n", block)
-		return nil
-	}
 	confPath := "/etc/modprobe.d/block_usb.conf"
 	if block {
 		content := "blacklist usb-storage\nblacklist uas\n"
@@ -1347,113 +1290,88 @@ func runSystemCommand(action string) {
 	
 	if strings.HasPrefix(action, "open_url:") {
 		url := strings.TrimPrefix(action, "open_url:")
-		if runtime.GOOS == "darwin" {
-			runCommandWithLog("open", url)
-		} else {
-			c := runGUICommand("xdg-open", url)
-			_ = c.Run()
-		}
+		c := runGUICommand("xdg-open", url)
+		_ = c.Run()
 		return
 	}
 
 	if strings.HasPrefix(action, "show_message:") {
 		msg := strings.TrimPrefix(action, "show_message:")
-		if runtime.GOOS == "darwin" {
-			runCommandWithLog("osascript", "-e", fmt.Sprintf(`display dialog "%s" buttons {"Tamam"} default button "Tamam" with title "PolyOS Lab"`, msg))
-		} else {
-			// Linux/Pardus: zenity or notify-send
-			c := runGUICommand("zenity", "--info", "--text="+msg, "--title=PolyOS Lab", "--width=350")
-			err := c.Run()
-			if err != nil {
-				// Fallback to notify-send
-				c2 := runGUICommand("notify-send", "PolyOS Lab", msg)
-				_ = c2.Run()
-			}
+		c := runGUICommand("zenity", "--info", "--text="+msg, "--title=PolyOS Lab", "--width=350")
+		err := c.Run()
+		if err != nil {
+			c2 := runGUICommand("notify-send", "PolyOS Lab", msg)
+			_ = c2.Run()
 		}
 		return
 	}
 
 	if action == "internet_off" {
-		if runtime.GOOS == "darwin" {
-			runCommandWithLog("networksetup", "-setnetworkserviceenabled", "Wi-Fi", "off")
-		} else {
-			iptablesPath := findExecutable("iptables")
-			ip6tablesPath := findExecutable("ip6tables")
-			serverIP := getServerIP()
+		iptablesPath := findExecutable("iptables")
+		ip6tablesPath := findExecutable("ip6tables")
+		serverIP := getServerIP()
 
-			// Create custom POLYOS_BLOCK chain (IPv4) and reject non-local traffic
-			_ = exec.Command(iptablesPath, "-N", "POLYOS_BLOCK").Run()
-			_ = exec.Command(iptablesPath, "-F", "POLYOS_BLOCK").Run()
-			_ = exec.Command(iptablesPath, "-A", "POLYOS_BLOCK", "-o", "lo", "-j", "ACCEPT").Run()
-			_ = exec.Command(iptablesPath, "-A", "POLYOS_BLOCK", "-i", "lo", "-j", "ACCEPT").Run()
-			
-			// Whitelist resolved server IP specifically first
-			if serverIP != "" && serverIP != "localhost" && serverIP != "127.0.0.1" {
-				_ = exec.Command(iptablesPath, "-A", "POLYOS_BLOCK", "-d", serverIP, "-j", "ACCEPT").Run()
-				_ = exec.Command(iptablesPath, "-A", "POLYOS_BLOCK", "-s", serverIP, "-j", "ACCEPT").Run()
-			}
-
-			_ = exec.Command(iptablesPath, "-A", "POLYOS_BLOCK", "-d", "192.168.0.0/16", "-j", "ACCEPT").Run()
-			_ = exec.Command(iptablesPath, "-A", "POLYOS_BLOCK", "-s", "192.168.0.0/16", "-j", "ACCEPT").Run()
-			_ = exec.Command(iptablesPath, "-A", "POLYOS_BLOCK", "-d", "10.0.0.0/8", "-j", "ACCEPT").Run()
-			_ = exec.Command(iptablesPath, "-A", "POLYOS_BLOCK", "-s", "10.0.0.0/8", "-j", "ACCEPT").Run()
-			_ = exec.Command(iptablesPath, "-A", "POLYOS_BLOCK", "-d", "172.16.0.0/12", "-j", "ACCEPT").Run()
-			_ = exec.Command(iptablesPath, "-A", "POLYOS_BLOCK", "-s", "172.16.0.0/12", "-j", "ACCEPT").Run()
-			_ = exec.Command(iptablesPath, "-A", "POLYOS_BLOCK", "-j", "REJECT").Run()
-			
-			// Insert POLYOS_BLOCK jump rule to OUTPUT and INPUT if not already there
-			if exec.Command(iptablesPath, "-C", "OUTPUT", "-j", "POLYOS_BLOCK").Run() != nil {
-				_ = exec.Command(iptablesPath, "-I", "OUTPUT", "1", "-j", "POLYOS_BLOCK").Run()
-			}
-			if exec.Command(iptablesPath, "-C", "INPUT", "-j", "POLYOS_BLOCK").Run() != nil {
-				_ = exec.Command(iptablesPath, "-I", "INPUT", "1", "-j", "POLYOS_BLOCK").Run()
-			}
-
-			// Create custom POLYOS_BLOCK chain (IPv6) and reject non-local traffic
-			_ = exec.Command(ip6tablesPath, "-N", "POLYOS_BLOCK").Run()
-			_ = exec.Command(ip6tablesPath, "-F", "POLYOS_BLOCK").Run()
-			_ = exec.Command(ip6tablesPath, "-A", "POLYOS_BLOCK", "-o", "lo", "-j", "ACCEPT").Run()
-			_ = exec.Command(ip6tablesPath, "-A", "POLYOS_BLOCK", "-i", "lo", "-j", "ACCEPT").Run()
-			_ = exec.Command(ip6tablesPath, "-A", "POLYOS_BLOCK", "-d", "fe80::/10", "-j", "ACCEPT").Run()
-			_ = exec.Command(ip6tablesPath, "-A", "POLYOS_BLOCK", "-s", "fe80::/10", "-j", "ACCEPT").Run()
-			_ = exec.Command(ip6tablesPath, "-A", "POLYOS_BLOCK", "-d", "fc00::/7", "-j", "ACCEPT").Run()
-			_ = exec.Command(ip6tablesPath, "-A", "POLYOS_BLOCK", "-s", "fc00::/7", "-j", "ACCEPT").Run()
-			_ = exec.Command(ip6tablesPath, "-A", "POLYOS_BLOCK", "-j", "REJECT").Run()
-
-			// Insert POLYOS_BLOCK jump rule to OUTPUT and INPUT (IPv6) if not already there
-			if exec.Command(ip6tablesPath, "-C", "OUTPUT", "-j", "POLYOS_BLOCK").Run() != nil {
-				_ = exec.Command(ip6tablesPath, "-I", "OUTPUT", "1", "-j", "POLYOS_BLOCK").Run()
-			}
-			if exec.Command(ip6tablesPath, "-C", "INPUT", "-j", "POLYOS_BLOCK").Run() != nil {
-				_ = exec.Command(ip6tablesPath, "-I", "INPUT", "1", "-j", "POLYOS_BLOCK").Run()
-			}
-
-			log.Println("İnternet kısıtlandı (POLYOS_BLOCK IPv4 ve IPv6 INPUT/OUTPUT aktif). Yerel ağ bağlantısı korundu.")
+		_ = exec.Command(iptablesPath, "-N", "POLYOS_BLOCK").Run()
+		_ = exec.Command(iptablesPath, "-F", "POLYOS_BLOCK").Run()
+		_ = exec.Command(iptablesPath, "-A", "POLYOS_BLOCK", "-o", "lo", "-j", "ACCEPT").Run()
+		_ = exec.Command(iptablesPath, "-A", "POLYOS_BLOCK", "-i", "lo", "-j", "ACCEPT").Run()
+		
+		if serverIP != "" && serverIP != "localhost" && serverIP != "127.0.0.1" {
+			_ = exec.Command(iptablesPath, "-A", "POLYOS_BLOCK", "-d", serverIP, "-j", "ACCEPT").Run()
+			_ = exec.Command(iptablesPath, "-A", "POLYOS_BLOCK", "-s", serverIP, "-j", "ACCEPT").Run()
 		}
+
+		_ = exec.Command(iptablesPath, "-A", "POLYOS_BLOCK", "-d", "192.168.0.0/16", "-j", "ACCEPT").Run()
+		_ = exec.Command(iptablesPath, "-A", "POLYOS_BLOCK", "-s", "192.168.0.0/16", "-j", "ACCEPT").Run()
+		_ = exec.Command(iptablesPath, "-A", "POLYOS_BLOCK", "-d", "10.0.0.0/8", "-j", "ACCEPT").Run()
+		_ = exec.Command(iptablesPath, "-A", "POLYOS_BLOCK", "-s", "10.0.0.0/8", "-j", "ACCEPT").Run()
+		_ = exec.Command(iptablesPath, "-A", "POLYOS_BLOCK", "-d", "172.16.0.0/12", "-j", "ACCEPT").Run()
+		_ = exec.Command(iptablesPath, "-A", "POLYOS_BLOCK", "-s", "172.16.0.0/12", "-j", "ACCEPT").Run()
+		_ = exec.Command(iptablesPath, "-A", "POLYOS_BLOCK", "-j", "REJECT").Run()
+		
+		if exec.Command(iptablesPath, "-C", "OUTPUT", "-j", "POLYOS_BLOCK").Run() != nil {
+			_ = exec.Command(iptablesPath, "-I", "OUTPUT", "1", "-j", "POLYOS_BLOCK").Run()
+		}
+		if exec.Command(iptablesPath, "-C", "INPUT", "-j", "POLYOS_BLOCK").Run() != nil {
+			_ = exec.Command(iptablesPath, "-I", "INPUT", "1", "-j", "POLYOS_BLOCK").Run()
+		}
+
+		_ = exec.Command(ip6tablesPath, "-N", "POLYOS_BLOCK").Run()
+		_ = exec.Command(ip6tablesPath, "-F", "POLYOS_BLOCK").Run()
+		_ = exec.Command(ip6tablesPath, "-A", "POLYOS_BLOCK", "-o", "lo", "-j", "ACCEPT").Run()
+		_ = exec.Command(ip6tablesPath, "-A", "POLYOS_BLOCK", "-i", "lo", "-j", "ACCEPT").Run()
+		_ = exec.Command(ip6tablesPath, "-A", "POLYOS_BLOCK", "-d", "fe80::/10", "-j", "ACCEPT").Run()
+		_ = exec.Command(ip6tablesPath, "-A", "POLYOS_BLOCK", "-s", "fe80::/10", "-j", "ACCEPT").Run()
+		_ = exec.Command(ip6tablesPath, "-A", "POLYOS_BLOCK", "-d", "fc00::/7", "-j", "ACCEPT").Run()
+		_ = exec.Command(ip6tablesPath, "-A", "POLYOS_BLOCK", "-s", "fc00::/7", "-j", "ACCEPT").Run()
+		_ = exec.Command(ip6tablesPath, "-A", "POLYOS_BLOCK", "-j", "REJECT").Run()
+
+		if exec.Command(ip6tablesPath, "-C", "OUTPUT", "-j", "POLYOS_BLOCK").Run() != nil {
+			_ = exec.Command(ip6tablesPath, "-I", "OUTPUT", "1", "-j", "POLYOS_BLOCK").Run()
+		}
+		if exec.Command(ip6tablesPath, "-C", "INPUT", "-j", "POLYOS_BLOCK").Run() != nil {
+			_ = exec.Command(ip6tablesPath, "-I", "INPUT", "1", "-j", "POLYOS_BLOCK").Run()
+		}
+
+		log.Println("Internet blocked (POLYOS_BLOCK IPv4/IPv6 enabled). LAN traffic preserved.")
 		return
 	}
 
 	if action == "internet_on" {
-		if runtime.GOOS == "darwin" {
-			runCommandWithLog("networksetup", "-setnetworkserviceenabled", "Wi-Fi", "on")
-		} else {
-			iptablesPath := findExecutable("iptables")
-			ip6tablesPath := findExecutable("ip6tables")
+		iptablesPath := findExecutable("iptables")
+		ip6tablesPath := findExecutable("ip6tables")
 
-			// Tear down POLYOS_BLOCK chain (IPv4)
-			_ = exec.Command(iptablesPath, "-D", "OUTPUT", "-j", "POLYOS_BLOCK").Run()
-			_ = exec.Command(iptablesPath, "-D", "INPUT", "-j", "POLYOS_BLOCK").Run()
-			_ = exec.Command(iptablesPath, "-F", "POLYOS_BLOCK").Run()
-			_ = exec.Command(iptablesPath, "-X", "POLYOS_BLOCK").Run()
+		_ = exec.Command(iptablesPath, "-D", "OUTPUT", "-j", "POLYOS_BLOCK").Run()
+		_ = exec.Command(iptablesPath, "-D", "INPUT", "-j", "POLYOS_BLOCK").Run()
+		_ = exec.Command(iptablesPath, "-F", "POLYOS_BLOCK").Run()
+		_ = exec.Command(iptablesPath, "-X", "POLYOS_BLOCK").Run()
 
-			// Tear down POLYOS_BLOCK chain (IPv6)
-			_ = exec.Command(ip6tablesPath, "-D", "OUTPUT", "-j", "POLYOS_BLOCK").Run()
-			_ = exec.Command(ip6tablesPath, "-D", "INPUT", "-j", "POLYOS_BLOCK").Run()
-			_ = exec.Command(ip6tablesPath, "-F", "POLYOS_BLOCK").Run()
-			_ = exec.Command(ip6tablesPath, "-X", "POLYOS_BLOCK").Run()
+		_ = exec.Command(ip6tablesPath, "-D", "OUTPUT", "-j", "POLYOS_BLOCK").Run()
+		_ = exec.Command(ip6tablesPath, "-D", "INPUT", "-j", "POLYOS_BLOCK").Run()
+		_ = exec.Command(ip6tablesPath, "-F", "POLYOS_BLOCK").Run()
+		_ = exec.Command(ip6tablesPath, "-X", "POLYOS_BLOCK").Run()
 
-			log.Println("İnternet kısıtlaması kaldırıldı (POLYOS_BLOCK IPv4 ve IPv6 silindi).")
-		}
+		log.Println("Internet block removed (POLYOS_BLOCK IPv4/IPv6 deleted).")
 		return
 	}
 
@@ -1481,45 +1399,24 @@ func runSystemCommand(action string) {
 		return
 	}
 	
-	if runtime.GOOS == "darwin" {
-		// macOS (Simülasyon ve test)
-		switch action {
-		case "lock":
-			startLockOverlay()
-			setInputsEnabled(false)
-			runCommandWithLog("osascript", "-e", `display notification "Ekran Kilitlendi" with title "PolyOS Lab"`)
-			runCommandWithLog("pmset", "displaysleepnow")
-		case "unlock":
-			stopLockOverlay()
-			setInputsEnabled(true)
-			runCommandWithLog("osascript", "-e", `display notification "Ekran Kilidi Açıldı" with title "PolyOS Lab"`)
-		case "sleep":
-			runCommandWithLog("pmset", "sleepnow")
-		case "reboot":
-			runCommandWithLog("osascript", "-e", `display dialog "PolyOS Lab: Yeniden başlatma komutu alındı." buttons {"Tamam"} default button "Tamam"`)
-		case "shutdown":
-			runCommandWithLog("osascript", "-e", `display dialog "PolyOS Lab: Kapatma komutu alındı." buttons {"Tamam"} default button "Tamam"`)
-		}
-	} else {
-		// Linux (Pardus)
-		switch action {
-		case "lock":
-			startLockOverlay()
-			setInputsEnabled(false)
-		case "unlock":
-			stopLockOverlay()
-			setInputsEnabled(true)
-		case "sleep":
-			runCommandWithLog("systemctl", "suspend")
-		case "reboot":
-			runCommandWithLog("systemctl", "reboot")
-		case "shutdown":
-			runCommandWithLog("systemctl", "poweroff")
-		}
+	// Handle Linux client actions
+	switch action {
+	case "lock":
+		startLockOverlay()
+		setInputsEnabled(false)
+	case "unlock":
+		stopLockOverlay()
+		setInputsEnabled(true)
+	case "sleep":
+		runCommandWithLog("systemctl", "suspend")
+	case "reboot":
+		runCommandWithLog("systemctl", "reboot")
+	case "shutdown":
+		runCommandWithLog("systemctl", "poweroff")
 	}
 }
 
-// Sunucudan gönderilen dosyayı indirip masaüstüne kaydeden fonksiyon
+// Download file from server and save to desktop
 func handleFileTransfer(fileURL, filename string) {
 	// Reconstruct the URL using the correct, reachable server address we are communicating with
 	activeServer := getServerHTTPURL()
@@ -1534,7 +1431,7 @@ func handleFileTransfer(fileURL, filename string) {
 	}
 	defer resp.Body.Close()
 
-	// Hedef masaüstü dizinini belirle
+	// Resolve target desktop directory
 	var homeDir string
 	guiUser := getLoggedInGUIUser()
 	if guiUser != "" && guiUser != "root" {
@@ -1553,18 +1450,13 @@ func handleFileTransfer(fileURL, filename string) {
 		return
 	}
 
-	var desktopPath string
-	if runtime.GOOS == "darwin" {
+	// Check for Turkish "Masaüstü" or English "Desktop" folder
+	desktopPath := filepath.Join(homeDir, "Masaüstü")
+	if _, err := os.Stat(desktopPath); os.IsNotExist(err) {
 		desktopPath = filepath.Join(homeDir, "Desktop")
-	} else {
-		// Türkçe Pardus için "Masaüstü", İngilizce için "Desktop" kontrolü
-		desktopPath = filepath.Join(homeDir, "Masaüstü")
-		if _, err := os.Stat(desktopPath); os.IsNotExist(err) {
-			desktopPath = filepath.Join(homeDir, "Desktop")
-		}
 	}
 
-	// Eğer klasör yoksa oluştur (güvenlik için)
+	// Ensure the target folder exists
 	_ = os.MkdirAll(desktopPath, 0755)
 	if guiUser != "" && guiUser != "root" {
 		_ = exec.Command("chown", guiUser+":"+guiUser, desktopPath).Run()
@@ -1584,62 +1476,29 @@ func handleFileTransfer(fileURL, filename string) {
 		return
 	}
 
-	// Dosya sahipliğini gerçek kullanıcıya devret
+	// Hand file ownership over to GUI user
 	if guiUser != "" && guiUser != "root" {
 		_ = exec.Command("chown", guiUser+":"+guiUser, targetFile).Run()
 	}
 
 	log.Printf("Dosya başarıyla kaydedildi: %s\n", targetFile)
 
-	// Başarılı bildirim gönder
-	if runtime.GOOS == "darwin" {
-		runCommandWithLog("osascript", "-e", `display notification "`+filename+` başarıyla Masaüstüne kaydedildi.\nYol: `+targetFile+`" with title "Dosya Alındı"`)
-	} else {
-		// runGUICommand sets display, xauthority, UID/GID, and DBUS env vars so notifications appear on active desktop
-		cmd := runGUICommand("notify-send", "Dosya Alındı", "Dosya: "+filename+"\nYol: "+targetFile)
-		_ = cmd.Run()
-	}
+	// Send success notification to user desktop
+	// runGUICommand sets display, xauthority, UID/GID, and DBUS env vars so notifications appear on active desktop
+	cmd := runGUICommand("notify-send", "Dosya Alındı", "Dosya: "+filename+"\nYol: "+targetFile)
+	_ = cmd.Run()
 }
 
-// macOS'te CoreGraphics API ile tıklama gerçekleştiren Swift scripti tetikleyicisi
-func macosClick(xStr, yStr string, rightClick bool) {
-	btnType := ".left"
-	mouseDownType := ".leftMouseDown"
-	mouseUpType := ".leftMouseUp"
-	
-	if rightClick {
-		btnType = ".right"
-		mouseDownType = ".rightMouseDown"
-		mouseUpType = ".rightMouseUp"
-	}
-
-	swiftCode := fmt.Sprintf(`
-import Foundation
-import CoreGraphics
-
-let point = CGPoint(x: %s, y: %s)
-let source = CGEventSource(stateID: .combinedSessionState)
-
-let mouseDown = CGEvent(mouseEventSource: source, mouseType: %s, mouseCursorPosition: point, mouseButton: %s)
-mouseDown?.post(tap: .cghidEventTap)
-
-let mouseUp = CGEvent(mouseEventSource: source, mouseType: %s, mouseCursorPosition: point, mouseButton: %s)
-mouseUp?.post(tap: .cghidEventTap)
-`, xStr, yStr, mouseDownType, btnType, mouseUpType, btnType)
-
-	runCommandWithLog("swift", "-e", swiftCode)
-}
-
-// Fare, klavye ve uzaktan kontrol girdilerini simüle eden fonksiyon
+// Simulate input events (mouse, keyboard, clipboard) received from server
 func handleInputEvent(event string, data map[string]interface{}) {
-	log.Printf("Girdi olayı alınıp simüle ediliyor: %s\n", event)
+	log.Printf("Simulating input event: %s\n", event)
 
 	switch event {
 	case "start_control":
-		log.Println("Uzaktan kontrol modu aktif: Akış hızı 100ms'ye düşürüldü.")
+		log.Println("Remote control session started: reducing capture interval to 100ms")
 		setCaptureInterval(100 * time.Millisecond)
 	case "stop_control":
-		log.Println("Uzaktan kontrol modu pasif: Akış hızı 2sn'ye çekildi.")
+		log.Println("Remote control session ended: resetting capture interval to 2s")
 		setCaptureInterval(2000 * time.Millisecond)
 	case "mousemove", "click":
 		xPct, _ := data["x"].(float64)
@@ -1649,50 +1508,27 @@ func handleInputEvent(event string, data map[string]interface{}) {
 		xStr := strconv.Itoa(int(xPct * float64(w)))
 		yStr := strconv.Itoa(int(yPct * float64(h)))
 
-		if runtime.GOOS == "darwin" {
-			// macOS Swift tık simülasyonu
-			rightClick := false
-			if button, ok := data["button"].(string); ok && button == "right" {
-				rightClick = true
+		if event == "mousemove" {
+			runCommandWithLog("xdotool", "mousemove", xStr, yStr)
+		} else if event == "click" {
+			button, _ := data["button"].(string)
+			btnCode := "1" // left click
+			if button == "right" {
+				btnCode = "3" // right click
 			}
-			macosClick(xStr, yStr, rightClick)
-		} else {
-			// Linux/Pardus xdotool
-			if event == "mousemove" {
-				runCommandWithLog("xdotool", "mousemove", xStr, yStr)
-			} else if event == "click" {
-				button, _ := data["button"].(string)
-				btnCode := "1" // sol tık
-				if button == "right" {
-					btnCode = "3" // sağ tık
-				}
-				runCommandWithLog("xdotool", "mousemove", xStr, yStr, "click", btnCode)
-			}
+			runCommandWithLog("xdotool", "mousemove", xStr, yStr, "click", btnCode)
 		}
 	case "key":
 		key, _ := data["key"].(string)
-		if runtime.GOOS == "darwin" {
-			runCommandWithLog("osascript", "-e", fmt.Sprintf(`tell application "System Events" to keystroke "%s"`, key))
-		} else {
-			runCommandWithLog("xdotool", "key", key)
-		}
+		runCommandWithLog("xdotool", "key", key)
 	case "clipboard":
 		text, _ := data["text"].(string)
-		if runtime.GOOS == "darwin" {
-			cmd := exec.Command("pbcopy")
-			in, _ := cmd.StdinPipe()
-			cmd.Start()
-			in.Write([]byte(text))
-			in.Close()
-			cmd.Wait()
-		} else {
-			cmd := exec.Command("xclip", "-selection", "clipboard")
-			in, _ := cmd.StdinPipe()
-			cmd.Start()
-			in.Write([]byte(text))
-			in.Close()
-			cmd.Wait()
-		}
+		cmd := exec.Command("xclip", "-selection", "clipboard")
+		in, _ := cmd.StdinPipe()
+		cmd.Start()
+		in.Write([]byte(text))
+		in.Close()
+		cmd.Wait()
 	}
 }
 
@@ -1999,17 +1835,11 @@ func writeHostsWithSudo(content string) error {
 	}
 	defer os.Remove(tmpFile)
 
-	if runtime.GOOS == "darwin" {
-		// macOS AppleScript yetkilendirme penceresi
-		script := fmt.Sprintf(`do shell script "cp %s /etc/hosts" with administrator privileges`, tmpFile)
-		return exec.Command("osascript", "-e", script).Run()
-	} else {
-		// Linux pkexec yetkilendirme penceresi
-		return exec.Command("pkexec", "cp", tmpFile, "/etc/hosts").Run()
-	}
+	// Authenticate and write hosts file using pkexec on Linux
+	return exec.Command("pkexec", "cp", tmpFile, "/etc/hosts").Run()
 }
 
-// hosts dosyasında domain engelleme / engel kaldırma
+// Block or unblock domains in hosts file
 func updateHostsFile(domain string, block bool) error {
 	hostsPath := "/etc/hosts"
 	if runtime.GOOS == "windows" {
@@ -2058,17 +1888,17 @@ func updateHostsFile(domain string, block bool) error {
 
 	output := strings.Join(newLines, "\n")
 	
-	// Önce doğrudan yazmayı dene
+	// Try writing directly first
 	err = os.WriteFile(hostsPath, []byte(output), 0644)
 	if err != nil {
-		// Doğrudan yazma yetki hatası verirse sudo ile dene
+		// Try using pkexec if direct write fails
 		log.Println("[YETKİ UYARISI] hosts dosyası doğrudan yazılamadı, yönetici yetkisi isteniyor...")
 		return writeHostsWithSudo(output)
 	}
 	return nil
 }
 
-// Sunucu adresini WS URL'sinden çıkaran fonksiyon
+// Extract host address from WebSocket URL
 func getServerHost(serverURL string) string {
 	u := strings.TrimPrefix(serverURL, "ws://")
 	u = strings.TrimPrefix(u, "wss://")
@@ -2079,14 +1909,14 @@ func getServerHost(serverURL string) string {
 	return "localhost:8080"
 }
 
-// Engellenen siteleri sunucu üzerindeki /blocked sayfasına yönlendiren yerel HTTP sunucusu
+// Local HTTP server to redirect blocked domains to warning page
 func startLocalRedirectServer(serverURL string) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		host := r.Host
 		serverHost := getServerHost(serverURL)
 		
-		// Eğer istek zaten localhost veya serverHost adresine ise yönlendirme döngüsüne girmesin
+		// Prevent routing loops for local/server domains
 		if strings.Contains(host, "localhost") || strings.Contains(host, "127.0.0.1") || strings.Contains(host, serverHost) {
 			w.WriteHeader(http.StatusNotFound)
 			return
@@ -2110,18 +1940,11 @@ func startLocalRedirectServer(serverURL string) {
 	}()
 }
 
-// DNS önbelleğini temizleyerek yeni kuralların anında geçerli olmasını sağlayan fonksiyon
+// Flush DNS resolver caches
 func flushDNSCache() {
-	log.Println("İşletim sistemi DNS önbelleği temizleniyor...")
-	if runtime.GOOS == "darwin" {
-		// macOS DNS önbellek temizleme
-		_ = exec.Command("dscacheutil", "-flushcache").Run()
-		_ = exec.Command("killall", "-HUP", "mDNSResponder").Run()
-	} else {
-		// Linux/Pardus önbellek temizleme (systemd-resolved vb.)
-		_ = exec.Command("resolvectl", "flush-caches").Run()
-		_ = exec.Command("systemd-resolve", "--flush-caches").Run()
-		_ = exec.Command("systemctl", "restart", "systemd-resolved").Run()
-		_ = exec.Command("nscd", "-i", "hosts").Run()
-	}
+	log.Println("Flushing operating system DNS cache...")
+	_ = exec.Command("resolvectl", "flush-caches").Run()
+	_ = exec.Command("systemd-resolve", "--flush-caches").Run()
+	_ = exec.Command("systemctl", "restart", "systemd-resolved").Run()
+	_ = exec.Command("nscd", "-i", "hosts").Run()
 }
