@@ -397,10 +397,13 @@ func handleTerminalWS(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 }
-
 func handleVNCProxyWS(w http.ResponseWriter, r *http.Request) {
 	// Upgrade VNC client request to WebSocket
-	conn, err := upgrader.Upgrade(w, r, nil)
+	var vncUpgrader = websocket.Upgrader{
+		CheckOrigin: func(r *http.Request) bool { return true },
+		Subprotocols: []string{"binary"},
+	}
+	conn, err := vncUpgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Println("[VNC Proxy] Upgrade error:", err)
 		return
