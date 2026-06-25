@@ -1215,6 +1215,14 @@ func getLocalIP() string {
 }
 
 func main() {
+	home, err := os.UserHomeDir()
+	if err == nil {
+		uploadDir = filepath.Join(home, ".config", "polyos-lab", "uploads")
+	} else {
+		uploadDir = filepath.Join(os.TempDir(), "polyos-uploads")
+	}
+	_ = os.MkdirAll(uploadDir, 0755)
+
 	log.SetOutput(&wsLogWriter{})
 	http.HandleFunc("/blocked", handleBlocked)
 	http.HandleFunc("/ws", handleWS)
@@ -1250,7 +1258,7 @@ func main() {
 	go startUDPBeacon(*portFlag)
 
 	log.Printf("PolyOS Lab Server (Go) %s portunda dinleniyor...\n", port)
-	err := http.ListenAndServe(port, nil)
+	err = http.ListenAndServe(port, nil)
 	if err != nil {
 		log.Fatal("ListenAndServe:", err)
 	}

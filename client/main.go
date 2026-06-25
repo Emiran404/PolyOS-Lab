@@ -1525,9 +1525,20 @@ func handleFileTransfer(fileURL, filename string) {
 	defer resp.Body.Close()
 
 	// Hedef masaüstü dizinini belirle
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		log.Println("Kullanıcı ev dizini bulunamadı:", err)
+	var homeDir string
+	sudoUser := os.Getenv("SUDO_USER")
+	if sudoUser != "" && sudoUser != "root" {
+		homeDir = "/home/" + sudoUser
+		if _, err := os.Stat(homeDir); err != nil {
+			// Fallback to normal UserHomeDir if /home/<user> does not exist
+			homeDir, _ = os.UserHomeDir()
+		}
+	} else {
+		homeDir, _ = os.UserHomeDir()
+	}
+
+	if homeDir == "" {
+		log.Println("Kullanıcı ev dizini bulunamadı.")
 		return
 	}
 
@@ -1544,6 +1555,9 @@ func handleFileTransfer(fileURL, filename string) {
 
 	// Eğer klasör yoksa oluştur (güvenlik için)
 	_ = os.MkdirAll(desktopPath, 0755)
+	if sudoUser != "" && sudoUser != "root" {
+		_ = exec.Command("chown", sudoUser+":"+sudoUser, desktopPath).Run()
+	}
 
 	targetFile := filepath.Join(desktopPath, filename)
 	out, err := os.Create(targetFile)
@@ -1559,13 +1573,24 @@ func handleFileTransfer(fileURL, filename string) {
 		return
 	}
 
+	// Dosya sahipliğini gerçek kullanıcıya devret
+	if sudoUser != "" && sudoUser != "root" {
+		_ = exec.Command("chown", sudoUser+":"+sudoUser, targetFile).Run()
+	}
+
 	log.Printf("Dosya başarıyla kaydedildi: %s\n", targetFile)
 
 	// Başarılı bildirim gönder
 	if runtime.GOOS == "darwin" {
 		runCommandWithLog("osascript", "-e", `display notification "`+filename+` başarıyla Masaüstüne kaydedildi." with title "Dosya Alındı"`)
 	} else {
-		runCommandWithLog("notify-send", "Dosya Alındı", filename+" başarıyla Masaüstüne kaydedildi.")
+		// Gerçek kullanıcı adıyla bildirim gönder (root olarak gönderilirse Masaüstünde görünmeyebilir)
+		if sudoUser != "" && sudoUser != "root" {
+			// sudo -u <user> notify-send ...
+			_ = exec.Command("sudo", "-u", sudoUser, "notify-send", "Dosya Alındı", filename+" başarıyla Masaüstüne kaydedildi.").Run()
+		} else {
+			runCommandWithLog("notify-send", "Dosya Alındı", filename+" başarıyla Masaüstüne kaydedildi.")
+		}
 	}
 }
 
