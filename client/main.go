@@ -29,7 +29,7 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-const clientVersion = "1.3.6"
+const clientVersion = "1.3.7"
 
 var (
 	captureInterval = 2000 * time.Millisecond
@@ -1530,14 +1530,15 @@ func handleFileTransfer(fileURL, filename string) {
 
 	// Hedef masaüstü dizinini belirle
 	var homeDir string
-	sudoUser := os.Getenv("SUDO_USER")
-	if sudoUser != "" && sudoUser != "root" {
-		homeDir = "/home/" + sudoUser
-		if _, err := os.Stat(homeDir); err != nil {
-			// Fallback to normal UserHomeDir if /home/<user> does not exist
-			homeDir, _ = os.UserHomeDir()
+	guiUser := getLoggedInGUIUser()
+	if guiUser != "" && guiUser != "root" {
+		if u, err := user.Lookup(guiUser); err == nil {
+			homeDir = u.HomeDir
+		} else {
+			homeDir = "/home/" + guiUser
 		}
-	} else {
+	}
+	if homeDir == "" {
 		homeDir, _ = os.UserHomeDir()
 	}
 
@@ -1559,8 +1560,8 @@ func handleFileTransfer(fileURL, filename string) {
 
 	// Eğer klasör yoksa oluştur (güvenlik için)
 	_ = os.MkdirAll(desktopPath, 0755)
-	if sudoUser != "" && sudoUser != "root" {
-		_ = exec.Command("chown", sudoUser+":"+sudoUser, desktopPath).Run()
+	if guiUser != "" && guiUser != "root" {
+		_ = exec.Command("chown", guiUser+":"+guiUser, desktopPath).Run()
 	}
 
 	targetFile := filepath.Join(desktopPath, filename)
@@ -1578,8 +1579,8 @@ func handleFileTransfer(fileURL, filename string) {
 	}
 
 	// Dosya sahipliğini gerçek kullanıcıya devret
-	if sudoUser != "" && sudoUser != "root" {
-		_ = exec.Command("chown", sudoUser+":"+sudoUser, targetFile).Run()
+	if guiUser != "" && guiUser != "root" {
+		_ = exec.Command("chown", guiUser+":"+guiUser, targetFile).Run()
 	}
 
 	log.Printf("Dosya başarıyla kaydedildi: %s\n", targetFile)
