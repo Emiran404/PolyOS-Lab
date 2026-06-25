@@ -1421,6 +1421,30 @@ function App() {
                       alert("Lütfen en az bir istemci seçin.");
                       return;
                     }
+                    setActiveTab('files');
+                  }}
+                  disabled={selectedClientIds.length === 0}
+                  className="btn-primary"
+                  style={{ 
+                    fontSize: '13px', 
+                    padding: '8px 12px', 
+                    backgroundColor: '#eab308',
+                    opacity: selectedClientIds.length === 0 ? 0.5 : 1,
+                    cursor: selectedClientIds.length === 0 ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                  title="Seçili Cihazlara Dosya Gönder"
+                >
+                  <FolderOpen size={16} /> Dosya Gönder
+                </button>
+                <button 
+                  onClick={() => {
+                    if (selectedClientIds.length === 0) {
+                      alert("Lütfen en az bir istemci seçin.");
+                      return;
+                    }
                     const selectedClients = clients.filter(c => selectedClientIds.includes(c.id));
                     setActiveTerminalClients(selectedClients);
                     setTerminalLines([]);
@@ -2265,7 +2289,7 @@ function App() {
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(0,0,0,0.03)', paddingBottom: '6px' }}>
                     <span style={{ color: 'var(--color-text-secondary)' }}>Sürüm (Version):</span>
-                    <span style={{ fontWeight: 600, color: '#3b82f6' }}>v1.3.5</span>
+                    <span style={{ fontWeight: 600, color: '#3b82f6' }}>v1.3.11</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(0,0,0,0.03)', paddingBottom: '6px' }}>
                     <span style={{ color: 'var(--color-text-secondary)' }}>Geliştirici (Developer):</span>

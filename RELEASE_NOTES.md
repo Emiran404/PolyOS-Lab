@@ -1,3 +1,18 @@
+# PolyOS Lab v1.3.11 - Sürüm Açıklaması
+
+🎉 **PolyOS Lab v1.3.11**
+
+Bu sürüm; Hızlı İşlemler paneline "Dosya Gönder" butonu ekler ve VNC ekran yansıtma senkronizasyonunu optimize eder.
+
+---
+
+## 🚀 Yenilikler ve İyileştirmeler
+
+### 📂 Hızlı İşlemler "Dosya Gönder" Entegrasyonu
+* **Hızlı Aksiyon Butonu:** Hızlı İşlemler sekmesindeki üst kontrol paneline "Dosya Gönder" butonu eklendi. Seçtiğiniz 3-5 istemciye doğrudan oradan dosya transferi sekmesine geçerek otomatik hedeflenmiş şekilde dosya gönderebilirsiniz.
+
+---
+
 # PolyOS Lab v1.3.10 - Sürüm Açıklaması
 
 🎉 **PolyOS Lab v1.3.10**
@@ -19,24 +34,6 @@ Bu sürüm; VNC uzaktan kontrol modunda pano eşitleme sistemini iyileştirir ve
 🎉 **PolyOS Lab v1.3.9**
 
 Bu sürüm; öğretmen ekran yansıtma (screen share) sistemindeki istemci bağımlılık çökmelerini düzeltir ve Dashboard uygulamasının paket adını günceller.
-
----
-
-## 🚀 Yenilikler ve İyileştirmeler
-
-### 🖥️ Öğretmen Ekran Yansıtma Düzeltmesi (Sıfır Bağımlılık)
-* **Bağımlılıksız Kiosk Tarayıcı Yayını:** VNC ve tarayıcı modlarında öğretmen ekran paylaşımı başlatıldığında, istemci tarafında harici Python kütüphaneleri (Pillow, websocket-client vb.) gerektiren Tkinter aracı yerine doğrudan yerleşik web tarayıcısı (Firefox / Chrome) kiosk modda tetiklenir. Bu sayede istemcilerde hiçbir ek paket kurmaya gerek kalmadan öğretmen ekranı kararlı ve tam ekran olarak yansıtılır.
-
-### 📦 Dashboard Paket İsmi Güncellemesi
-* **Ürün İsmi Değişimi:** `.deb` paketi ve uygulama ismi `PolyOS Lab Dashboard` yerine **`PolyOS Lab Öğretmen Paneli`** olarak güncellendi. Artık masaüstü kısayollarında ve uygulama listelerinde Türkçe isimle yer alacaktır.
-
----
-
-# PolyOS Lab v1.3.8 - Sürüm Açıklaması
-
-🎉 **PolyOS Lab v1.3.8**
-
-Bu sürüm; istemci VNC başlangıç varsayılanlarını düzenler ve çoklu dosya transferini kolaylaştırmak amacıyla sürükle-bırak (drag & drop) dosya yükleme desteği ile seçili istemcilere dosya yansıtma seçeneklerini arayüze ekler.
 
 ---
 
