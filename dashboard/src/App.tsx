@@ -2784,6 +2784,11 @@ function App() {
                 placeholder="Pano içeriği (kopyalanacak)..." 
                 value={clipboardText}
                 onChange={(e) => setClipboardText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleSyncClipboard();
+                  }
+                }}
                 style={{
                   padding: '8px 12px',
                   borderRadius: '6px',

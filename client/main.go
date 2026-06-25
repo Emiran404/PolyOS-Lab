@@ -29,7 +29,7 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-const clientVersion = "1.3.9"
+const clientVersion = "1.3.10"
 
 var (
 	captureInterval = 2000 * time.Millisecond
@@ -1049,6 +1049,12 @@ func blockUSBDevices(block bool) error {
 }
 
 func ensureVNCInstalled() {
+	// Pano aracı (xclip) kontrolü ve otomatik kurulumu
+	if _, err := exec.LookPath("xclip"); err != nil {
+		log.Println("[VNC] Pano eşitleme aracı xclip bulunamadı. Kurulum başlatılıyor...")
+		_ = exec.Command("apt-get", "install", "-y", "xclip").Run()
+	}
+
 	_, err1 := exec.LookPath("x11vnc")
 	_, err2 := exec.LookPath("x0vncserver")
 	if err1 == nil || err2 == nil {
