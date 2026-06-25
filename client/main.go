@@ -1052,11 +1052,10 @@ func startVNCServer() {
 	killProcessByName("x0vncserver")
 
 	// Try x11vnc first (recommended for raw display mirroring on existing X11 sessions)
-	// -localhost: safe, only accept local proxy connections from our websockify server
 	// -forever: stay alive after client disconnects
 	// -shared: multiple clients allowed
 	// -nopw: bypass authentication since PolyOS ws token guarantees security at server boundaries
-	vncArgs := []string{"-localhost", "-forever", "-shared", "-nopw", "-bg", "-display", ":0"}
+	vncArgs := []string{"-forever", "-shared", "-nopw", "-bg", "-display", ":0"}
 	
 	// Create run configuration using client wrappers
 	c := runGUICommand("x11vnc", vncArgs...)
@@ -1068,7 +1067,7 @@ func startVNCServer() {
 	}
 
 	// Try TigerVNC x0vncserver fallback
-	tigerArgs := []string{"-display", ":0", "-SecurityTypes", "None", "-localhost"}
+	tigerArgs := []string{"-display", ":0", "-SecurityTypes", "None"}
 	c2 := runGUICommand("x0vncserver", tigerArgs...)
 	err2 := c2.Start()
 	if err2 == nil {
