@@ -64,9 +64,19 @@ type Device struct {
 	LastSeen time.Time `json:"lastSeen"`
 }
 
+func getDevicesFilePath() string {
+	home, err := os.UserHomeDir()
+	if err == nil {
+		dir := filepath.Join(home, ".config", "polyos-lab")
+		_ = os.MkdirAll(dir, 0755)
+		return filepath.Join(dir, "devices.json")
+	}
+	return "devices.json"
+}
+
 func loadDevices() map[string]*Device {
 	devices := make(map[string]*Device)
-	data, err := os.ReadFile("devices.json")
+	data, err := os.ReadFile(getDevicesFilePath())
 	if err == nil {
 		_ = json.Unmarshal(data, &devices)
 	}
@@ -92,7 +102,7 @@ func saveDevice(mac, hostname, ip string) {
 		LastSeen: time.Now(),
 	}
 	data, _ := json.MarshalIndent(devices, "", "  ")
-	_ = os.WriteFile("devices.json", data, 0644)
+	_ = os.WriteFile(getDevicesFilePath(), data, 0644)
 }
 
 var (
@@ -742,7 +752,7 @@ func handleDeleteDevice(w http.ResponseWriter, r *http.Request) {
 	if _, exists := devices[req.MAC]; exists {
 		delete(devices, req.MAC)
 		data, _ := json.MarshalIndent(devices, "", "  ")
-		_ = os.WriteFile("devices.json", data, 0644)
+		_ = os.WriteFile(getDevicesFilePath(), data, 0644)
 		log.Printf("Cihaz silindi: %s\n", req.MAC)
 	}
 

@@ -444,8 +444,18 @@ func getMACAddress() string {
 	if err != nil {
 		return ""
 	}
+	// First pass: Active (UP) non-loopback interfaces
 	for _, iface := range interfaces {
 		if iface.Flags&net.FlagLoopback == 0 && iface.Flags&net.FlagUp != 0 {
+			mac := iface.HardwareAddr.String()
+			if mac != "" {
+				return mac
+			}
+		}
+	}
+	// Fallback pass: Any non-loopback interface that has a hardware address
+	for _, iface := range interfaces {
+		if iface.Flags&net.FlagLoopback == 0 {
 			mac := iface.HardwareAddr.String()
 			if mac != "" {
 				return mac
