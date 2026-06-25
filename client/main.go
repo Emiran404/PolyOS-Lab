@@ -1034,6 +1034,28 @@ func blockUSBDevices(block bool) error {
 	return nil
 }
 
+func ensureVNCInstalled() {
+	_, err1 := exec.LookPath("x11vnc")
+	_, err2 := exec.LookPath("x0vncserver")
+	if err1 == nil || err2 == nil {
+		return // En az biri yüklü
+	}
+
+	log.Println("[VNC] VNC sunucuları (x11vnc / x0vncserver) sistemde bulunamadı. Otomatik kurulum başlatılıyor...")
+	
+	// Paket listelerini güncelle ve x11vnc kur
+	_ = exec.Command("apt-get", "update", "-y").Run()
+	cmd := exec.Command("apt-get", "install", "-y", "x11vnc")
+	err := cmd.Run()
+	if err != nil {
+		log.Println("[VNC] x11vnc otomatik olarak kurulamadı, alternatif tigervnc-scraping-server deneniyor:", err)
+		cmd2 := exec.Command("apt-get", "install", "-y", "tigervnc-scraping-server")
+		_ = cmd2.Run()
+	} else {
+		log.Println("[VNC] x11vnc paketi otomatik olarak başarıyla kuruldu.")
+	}
+}
+
 var (
 	vncServerCmd  *exec.Cmd
 	vncServerMutex sync.Mutex
@@ -1046,6 +1068,9 @@ func startVNCServer() {
 	if vncServerCmd != nil {
 		return // Zaten açık
 	}
+
+	// Yüklü değilse arka planda otomatik kur
+	ensureVNCInstalled()
 
 	log.Println("[VNC] VNC Sunucusu başlatılıyor...")
 	killProcessByName("x11vnc")
