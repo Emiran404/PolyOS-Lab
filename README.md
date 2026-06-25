@@ -109,42 +109,42 @@ PolyOS Lab, modüler yapısı sayesinde esnek ve ölçeklenebilirdir. Aşağıda
 ```mermaid
 graph TB
     %% Nodes
-    subgraph DashboardEnv ["💻 Öğretmen Kontrol Paneli (Electron & React)"]
-        DashboardUI["Arayüz (Vite + TS)"]
+    subgraph DashboardEnv ["💻 Teacher Dashboard (Electron & React)"]
+        DashboardUI["UI Layout (Vite + TS)"]
         VncViewer["noVNC Viewer (RFB Client)"]
-        ElectronMain["Electron Main Süreci"]
+        ElectronMain["Electron Main Process"]
     end
 
-    subgraph ServerEnv ["🖥️ Merkezi Yönetim Sunucusu (Go)"]
-        WSHub["WebSocket Hub (Komut Dağıtıcı)"]
-        UploadSrv["Dosya Yükleme Servisi (/api/upload)"]
-        WOLSrv["WOL Uyandırma Servisi (UDP)"]
+    subgraph ServerEnv ["🖥️ Central Management Server (Go)"]
+        WSHub["WebSocket Hub (Command Dispatcher)"]
+        UploadSrv["File Upload Service (/api/upload)"]
+        WOLSrv["WOL Wakeup Service (UDP)"]
     end
 
-    subgraph ClientEnv ["👥 Öğrenci Cihazları (Pardus / Linux)"]
+    subgraph ClientEnv ["👥 Student Devices (Pardus / Linux)"]
         direction LR
-        subgraph Client1 ["İstemci 1 Daemon"]
-            GoClient1["Go Client (Root Yetkisi)"]
-            VncSrv1["X11VNC Sunucusu"]
-            Kiosk1["Tarayıcı Kiosk Ekranı"]
+        subgraph Client1 ["Client 1 Daemon"]
+            GoClient1["Go Client (Root Privilege)"]
+            VncSrv1["X11VNC Server"]
+            Kiosk1["Browser Kiosk Screen"]
         end
-        subgraph Client2 ["İstemci 2 Daemon"]
-            GoClient2["Go Client (Root Yetkisi)"]
-            VncSrv2["X11VNC Sunucusu"]
-            Kiosk2["Tarayıcı Kiosk Ekranı"]
+        subgraph Client2 ["Client 2 Daemon"]
+            GoClient2["Go Client (Root Privilege)"]
+            VncSrv2["X11VNC Server"]
+            Kiosk2["Browser Kiosk Screen"]
         end
     end
 
     %% Connections
-    DashboardUI -->|1. REST API & WebSocket Kontrol| WSHub
-    VncViewer -->|"2. noVNC Akışı (Port 5900)"| VncSrv1
-    ElectronMain -->|3. Alt Süreç Başlatma| ServerEnv
+    DashboardUI -->|"1. REST API & WebSocket Control"| WSHub
+    VncViewer -->|"2. noVNC Stream (Port 5900)"| VncSrv1
+    ElectronMain -->|"3. Spawn Server Subprocess"| ServerEnv
 
-    WSHub <-->|"4. Çift Yönlü Canlı Bağlantı"| GoClient1
-    WSHub <-->|"4. Çift Yönlü Canlı Bağlantı"| GoClient2
+    WSHub <-->|"4. Bidirectional Live Connection"| GoClient1
+    WSHub <-->|"4. Bidirectional Live Connection"| GoClient2
     
-    UploadSrv -.->|5. HTTP Dosya İletimi| GoClient1
-    UploadSrv -.->|5. HTTP Dosya İletimi| GoClient2
+    UploadSrv -.->|"5. HTTP File Transmission"| GoClient1
+    UploadSrv -.->|"5. HTTP File Transmission"| GoClient2
 
     WOLSrv -.->|"6. Magic Packet (Port 9/UDP)"| GoClient1
     WOLSrv -.->|"6. Magic Packet (Port 9/UDP)"| GoClient2
