@@ -1,7 +1,7 @@
 {
   "name": "dashboard",
   "private": true,
-  "version": "1.3.8",
+  "version": "1.3.9",
   "description": "PolyOS Lab Teacher Dashboard",
   "author": "Emirhan Gok <emiran404@github.com>",
   "repository": {
@@ -21,7 +21,7 @@
   },
   "build": {
     "appId": "com.polyos.lab.dashboard",
-    "productName": "PolyOS Lab Dashboard",
+    "productName": "PolyOS Lab Öğretmen Paneli",
     "directories": {
       "output": "release/"
     },

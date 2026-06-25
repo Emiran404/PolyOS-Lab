@@ -1,3 +1,21 @@
+# PolyOS Lab v1.3.9 - Sürüm Açıklaması
+
+🎉 **PolyOS Lab v1.3.9**
+
+Bu sürüm; öğretmen ekran yansıtma (screen share) sistemindeki istemci bağımlılık çökmelerini düzeltir ve Dashboard uygulamasının paket adını günceller.
+
+---
+
+## 🚀 Yenilikler ve İyileştirmeler
+
+### 🖥️ Öğretmen Ekran Yansıtma Düzeltmesi (Sıfır Bağımlılık)
+* **Bağımlılıksız Kiosk Tarayıcı Yayını:** VNC ve tarayıcı modlarında öğretmen ekran paylaşımı başlatıldığında, istemci tarafında harici Python kütüphaneleri (Pillow, websocket-client vb.) gerektiren Tkinter aracı yerine doğrudan yerleşik web tarayıcısı (Firefox / Chrome) kiosk modda tetiklenir. Bu sayede istemcilerde hiçbir ek paket kurmaya gerek kalmadan öğretmen ekranı kararlı ve tam ekran olarak yansıtılır.
+
+### 📦 Dashboard Paket İsmi Güncellemesi
+* **Ürün İsmi Değişimi:** `.deb` paketi ve uygulama ismi `PolyOS Lab Dashboard` yerine **`PolyOS Lab Öğretmen Paneli`** olarak güncellendi. Artık masaüstü kısayollarında ve uygulama listelerinde Türkçe isimle yer alacaktır.
+
+---
+
 # PolyOS Lab v1.3.8 - Sürüm Açıklaması
 
 🎉 **PolyOS Lab v1.3.8**
@@ -19,26 +37,7 @@ Bu sürüm; istemci VNC başlangıç varsayılanlarını düzenler ve çoklu dos
 
 🎉 **PolyOS Lab v1.3.7**
 
-Bu sürüm; dosya transfer sistemindeki yetkilendirme sorunlarını, VNC proxy bağlantı protokolü el sıkışmalarını, Pardus/Debian ortamlarındaki MAC adresi tespit zayıflıklarını ve sistem servisleri altındaki ev dizini çözümleme kararsızlıklarını çözen kritik hata düzeltmelerini barındırır.
-
----
-
-## 🚀 Yenilikler ve Hata Düzeltmeleri
-
-### 📂 Dosya Transfer Sistemi İyileştirmeleri
-* **Masaüstü Dizin Çözümlemesi:** Sistem servisi veya `sudo` (root) olarak çalışan istemcilerde, aktif masaüstü kullanıcısının ev dizini `/proc`, `logname` ve `/home` gibi zengin alternatifler (`getLoggedInGUIUser`) ve Go `user.Lookup` API'si ile tespit edilir. Dosyalar artık doğrudan aktif kullanıcının Masaüstüne (`/home/kullanici/Masaüstü/`) indirilmektedir.
-* **Yetki Devri (chown):** Root tarafından indirilen dosyalar ve oluşturulan klasörler otomatik olarak aktif GUI kullanıcısının mülkiyetine (`chown`) geçirilir. Öğrencinin dosyayı düzenlemesi, açması veya silmesi önündeki engeller kaldırılmıştır.
-* **Sunucu Depolama:** Sunucu tarafında `uploads` dizini yazma yetkisi olan ev klasörü (`~/.config/polyos-lab/uploads`) içerisine dinamik olarak taşınarak paketlenmiş (read-only) Electron dizin yetki hataları giderildi.
-* **Yol Gösterimli Bildirimler:** Dosya başarıyla alındığında istemci bilgisayarının sağ üstünde aktif D-Bus oturumu kullanılarak bir bildirim balonu tetiklenir ve dosyanın tam adresi (`Yol: /home/.../Masaüstü/...`) gösterilir.
-
-### 🌐 Ağ ve VNC Proxy Bağlantı Düzeltmeleri
-* **VNC Subprotocol Desteği:** Go Websocket VNC Proxy el sıkışması (`handleVNCProxyWS`) noVNC tarafından talep edilen `binary` alt-protokolünü (subprotocol) destekleyecek şekilde güncellendi. noVNC bağlantılarının tarayıcı tarafından `1006` koduyla sonlandırılması önlendi.
-* **Güvenli Dış Erişim:** VNC sunucu komutlarındaki `-localhost` parametresi kaldırılarak ana sunucunun uzaktan kontrol ve ekran izleme amacıyla öğrenci istemcisine erişebilmesi sağlandı.
-* **Eksik VNC Otomatik Kurulumu:** VNC paylaşımı açıldığında istemci makinede `x11vnc` veya `x0vncserver` kurulu değilse arka planda otomatik olarak `apt-get` paket yöneticisi ile kurulması sağlandı.
-
-### 🔌 Cihaz Listesi ve WOL Düzeltmeleri
-* **MAC Adresi Tespiti:** Aktif arayüzlerde MAC adresi alınırken `UP` durum kontrolüne ek olarak, donanım adresi olan ilk loopback dışı arayüze otomatik geri düşme (fallback) desteği getirildi. MAC adresinin boş dönmesi sorunu çözüldü.
-* **Cihaz Listesi İzinleri:** Cihazların WOL amacıyla listelendiği `devices.json` dosyası yazılabilir kullanıcı yapılandırma klasörüne (`~/.config/polyos-lab/devices.json`) taşındı.
+Bu sürüm; dosya transfer sistemindeki yetkilendirme sorunlarını, VNC proxy bağlantı protokolü el sınıfı el sıkışmalarını, Pardus/Debian ortamlarındaki MAC adresi tespit zayıflıklarını ve sistem servisleri altındaki ev dizini çözümleme kararsızlıklarını çözen kritik hata düzeltmelerini barındırır.
 
 ---
 

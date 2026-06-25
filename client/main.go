@@ -29,7 +29,7 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-const clientVersion = "1.3.8"
+const clientVersion = "1.3.9"
 
 var (
 	captureInterval = 2000 * time.Millisecond
@@ -1151,7 +1151,7 @@ func startScreenShareViewer() {
 	currentTech := shareTechnology
 	shareTechMutex.RUnlock()
 
-	if currentTech == "browser" {
+	if currentTech == "browser" || currentTech == "vnc" {
 		log.Printf("[ScreenShare] Tarayıcı üzerinden yansıtma başlatılıyor: %s\n", shareURL)
 		firefoxProfileDir := "/tmp/polyos_share_firefox"
 		_ = os.MkdirAll(firefoxProfileDir, 0777)
