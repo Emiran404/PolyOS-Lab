@@ -661,12 +661,15 @@ func runGUICommand(name string, arg ...string) *exec.Cmd {
 	if xauth != "" {
 		env = append(env, "XAUTHORITY="+xauth)
 	}
-	c.Env = env
 
 	if userStr != "" && userStr != "root" {
 		if u, err := user.Lookup(userStr); err == nil {
 			uid, _ := strconv.ParseUint(u.Uid, 10, 32)
 			gid, _ := strconv.ParseUint(u.Gid, 10, 32)
+			
+			// Append DBUS address so notify-send/GUI notifications work under sudo
+			env = append(env, fmt.Sprintf("DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/%d/bus", uid))
+			
 			c.SysProcAttr = &syscall.SysProcAttr{
 				Credential: &syscall.Credential{
 					Uid: uint32(uid),
@@ -681,6 +684,7 @@ func runGUICommand(name string, arg ...string) *exec.Cmd {
 		log.Printf("[GUI] Çalıştırılıyor (Kullanıcı: root): %s\n", exePath)
 	}
 
+	c.Env = env
 	return c
 }
 
@@ -1582,15 +1586,11 @@ func handleFileTransfer(fileURL, filename string) {
 
 	// Başarılı bildirim gönder
 	if runtime.GOOS == "darwin" {
-		runCommandWithLog("osascript", "-e", `display notification "`+filename+` başarıyla Masaüstüne kaydedildi." with title "Dosya Alındı"`)
+		runCommandWithLog("osascript", "-e", `display notification "`+filename+` başarıyla Masaüstüne kaydedildi.\nYol: `+targetFile+`" with title "Dosya Alındı"`)
 	} else {
-		// Gerçek kullanıcı adıyla bildirim gönder (root olarak gönderilirse Masaüstünde görünmeyebilir)
-		if sudoUser != "" && sudoUser != "root" {
-			// sudo -u <user> notify-send ...
-			_ = exec.Command("sudo", "-u", sudoUser, "notify-send", "Dosya Alındı", filename+" başarıyla Masaüstüne kaydedildi.").Run()
-		} else {
-			runCommandWithLog("notify-send", "Dosya Alındı", filename+" başarıyla Masaüstüne kaydedildi.")
-		}
+		// runGUICommand sets display, xauthority, UID/GID, and DBUS env vars so notifications appear on active desktop
+		cmd := runGUICommand("notify-send", "Dosya Alındı", "Dosya: "+filename+"\nYol: "+targetFile)
+		_ = cmd.Run()
 	}
 }
 
