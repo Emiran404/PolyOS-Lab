@@ -894,8 +894,8 @@ func handleUpload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 50 MB'a kadar dosyaları kabul et
-	err := r.ParseMultipartForm(50 << 20)
+	// 1 GB'a kadar dosyaları kabul et
+	err := r.ParseMultipartForm(1024 << 20)
 	if err != nil {
 		http.Error(w, "Dosya boyutu çok büyük veya geçersiz form", http.StatusBadRequest)
 		return
@@ -915,7 +915,8 @@ func handleUpload(w http.ResponseWriter, r *http.Request) {
 		os.Mkdir(uploadDir, 0755)
 	}
 
-	filePath := filepath.Join(uploadDir, handler.Filename)
+	safeFilename := filepath.Base(handler.Filename)
+	filePath := filepath.Join(uploadDir, safeFilename)
 	dst, err := os.Create(filePath)
 	if err != nil {
 		http.Error(w, "Dosya kaydedilemedi", http.StatusInternalServerError)
@@ -940,13 +941,13 @@ func handleUpload(w http.ResponseWriter, r *http.Request) {
 		port = parts[1]
 	}
 
-	downloadURL := fmt.Sprintf("http://%s:%s/uploads/%s", serverIP, port, handler.Filename)
+	downloadURL := fmt.Sprintf("http://%s:%s/uploads/%s", serverIP, port, safeFilename)
 
 	// İstemciye/İstemcilere indir komutu gönder
 	transferMsg := map[string]string{
 		"action":   "file_transfer",
 		"url":      downloadURL,
-		"filename": handler.Filename,
+		"filename": safeFilename,
 	}
 
 	mutex.Lock()

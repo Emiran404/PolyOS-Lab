@@ -1418,10 +1418,11 @@ func runSystemCommand(action string) {
 
 // Download file from server and save to desktop
 func handleFileTransfer(fileURL, filename string) {
+	safeFilename := filepath.Base(filename)
 	// Reconstruct the URL using the correct, reachable server address we are communicating with
 	activeServer := getServerHTTPURL()
-	fileURL = activeServer + "/uploads/" + filename
-	log.Printf("Dosya transfer isteği alındı (yeniden yapılandırıldı): %s -> %s\n", filename, fileURL)
+	fileURL = activeServer + "/uploads/" + safeFilename
+	log.Printf("Dosya transfer isteği alındı (yeniden yapılandırıldı): %s -> %s\n", safeFilename, fileURL)
 
 	// Dosyayı indir
 	resp, err := http.Get(fileURL)
@@ -1462,7 +1463,7 @@ func handleFileTransfer(fileURL, filename string) {
 		_ = exec.Command("chown", guiUser+":"+guiUser, desktopPath).Run()
 	}
 
-	targetFile := filepath.Join(desktopPath, filename)
+	targetFile := filepath.Join(desktopPath, safeFilename)
 	out, err := os.Create(targetFile)
 	if err != nil {
 		log.Println("Hedef dosya oluşturulamadı:", err)
@@ -1485,7 +1486,7 @@ func handleFileTransfer(fileURL, filename string) {
 
 	// Send success notification to user desktop
 	// runGUICommand sets display, xauthority, UID/GID, and DBUS env vars so notifications appear on active desktop
-	cmd := runGUICommand("notify-send", "Dosya Alındı", "Dosya: "+filename+"\nYol: "+targetFile)
+	cmd := runGUICommand("notify-send", "Dosya Alındı", "Dosya: "+safeFilename+"\nYol: "+targetFile)
 	_ = cmd.Run()
 }
 
