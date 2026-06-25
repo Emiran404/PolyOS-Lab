@@ -29,7 +29,7 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-const clientVersion = "1.3.4"
+const clientVersion = "1.3.5"
 
 var (
 	captureInterval = 2000 * time.Millisecond
@@ -1040,26 +1040,107 @@ func startScreenShareViewer() {
 	}
 
 	shareURL := getShareURL()
-	log.Printf("[ScreenShare] Tarayıcı üzerinden yansıtma başlatılıyor: %s\n", shareURL)
-
-	// Ensure the custom firefox profile directory exists and is accessible
-	firefoxProfileDir := "/tmp/polyos_share_firefox"
-	_ = os.MkdirAll(firefoxProfileDir, 0777)
-	_ = os.Chmod(firefoxProfileDir, 0777)
-
-	// Tarayıcıları kiosk modunda başlat
-	browsers := [][]string{
-		{"firefox", "--new-instance", "--profile", firefoxProfileDir, "--kiosk", shareURL},
-		{"chromium-browser", "--kiosk", "--no-first-run", "--no-default-browser-check", "--user-data-dir=/tmp/polyos_share_chrome", shareURL},
-		{"chromium", "--kiosk", "--no-first-run", "--no-default-browser-check", "--user-data-dir=/tmp/polyos_share_chrome", shareURL},
-		{"google-chrome", "--kiosk", "--no-first-run", "--no-default-browser-check", "--user-data-dir=/tmp/polyos_share_chrome", shareURL},
+	// Reconstruct WebSocket share URL for student stream: ws://<server_ip>:<port>/ws/student-viewer
+	wsShareURL := strings.Replace(shareURL, "http://", "ws://", 1)
+	wsShareURL = strings.Replace(wsShareURL, "https://", "wss://", 1)
+	if !strings.HasSuffix(wsShareURL, "/ws/student-viewer") {
+		// If it is /share, map to /ws/student-viewer
+		wsShareURL = strings.Replace(wsShareURL, "/share", "/ws/student-viewer", 1)
 	}
 
-	for _, b := range browsers {
-		c, err := runAndMonitorGUICommand("ScreenShare", b[0], b[1:]...)
-		if err == nil {
-			screenShareCmd = c
-			break
+	log.Printf("[ScreenShare] Python Tkinter yansıtıcı başlatılıyor: %s\n", wsShareURL)
+
+	pyCode := fmt.Sprintf(`import tkinter as tk
+import websocket
+import base64
+import io
+import threading
+from PIL import Image, ImageTk
+
+class ScreenViewer:
+    def __init__(self, root, url):
+        self.root = root
+        self.url = url
+        self.root.title("PolyOS Lab - Öğretmen Ekranı")
+        self.root.attributes('-fullscreen', True)
+        self.root.configure(bg='black')
+        
+        # Prevent window closing manually
+        self.root.protocol("WM_DELETE_WINDOW", lambda: None)
+        
+        # Label to display image, configured to fill everything with zero borders/padding
+        self.label = tk.Label(self.root, bg='black', bd=0, highlightthickness=0)
+        self.label.pack(expand=True, fill='both')
+        
+        # Bind keys
+        self.root.bind("<Escape>", lambda e: None)
+        
+        self.ws = None
+        self.thread = threading.Thread(target=self.connect_ws, daemon=True)
+        self.thread.start()
+
+    def connect_ws(self):
+        def on_message(ws, message):
+            try:
+                img_data = base64.b64decode(message)
+                image = Image.open(io.BytesIO(img_data))
+                
+                # Dynamic full-screen resizing fitting coordinates exactly
+                screen_width = self.root.winfo_screenwidth()
+                screen_height = self.root.winfo_screenheight()
+                
+                img_width, img_height = image.size
+                ratio = min(screen_width/img_width, screen_height/img_height)
+                new_width = int(img_width * ratio)
+                new_height = int(img_height * ratio)
+                
+                image = image.resize((new_width, new_height), Image.Resampling.LANCZOS)
+                photo = ImageTk.PhotoImage(image)
+                
+                self.label.config(image=photo)
+                self.label.image = photo
+            except Exception as e:
+                print("Image error:", e)
+
+        def on_error(ws, error):
+            print("WS Error:", error)
+
+        def on_close(ws, close_status_code, close_msg):
+            print("WS Closed")
+
+        self.ws = websocket.WebSocketApp(
+            self.url,
+            on_message=on_message,
+            on_error=on_error,
+            on_close=on_close
+        )
+        self.ws.run_forever()
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = ScreenViewer(root, "%s")
+    root.mainloop()
+`, wsShareURL)
+
+	tmpPy := filepath.Join(os.TempDir(), "polyos_share_viewer.py")
+	_ = os.WriteFile(tmpPy, []byte(pyCode), 0644)
+
+	c, err := runAndMonitorGUICommand("ScreenShareTkinter", "python3", tmpPy)
+	if err == nil {
+		screenShareCmd = c
+	} else {
+		// Fallback to browsers if tkinter fails
+		browsers := [][]string{
+			{"firefox", "--new-instance", "--profile", "/tmp/polyos_share_firefox", "--kiosk", shareURL},
+			{"chromium-browser", "--kiosk", "--no-first-run", "--no-default-browser-check", "--user-data-dir=/tmp/polyos_share_chrome", shareURL},
+			{"chromium", "--kiosk", "--no-first-run", "--no-default-browser-check", "--user-data-dir=/tmp/polyos_share_chrome", shareURL},
+		}
+		for _, b := range browsers {
+			c, err := runAndMonitorGUICommand("ScreenShareBrowser", b[0], b[1:]...)
+			if err == nil {
+				screenShareCmd = c
+				break
+			}
 		}
 	}
 }
@@ -1073,6 +1154,11 @@ func stopScreenShareViewer() {
 		_ = screenShareCmd.Wait()
 		screenShareCmd = nil
 	}
+	killProcessByName("firefox")
+	killProcessByName("chromium-browser")
+	killProcessByName("chromium")
+	killProcessByName("chrome")
+	_ = os.Remove(filepath.Join(os.TempDir(), "polyos_share_viewer.py"))
 }
 
 func convertJpegBase64ToPngBase64(jpegB64 string) (string, error) {
