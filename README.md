@@ -4,7 +4,6 @@
 
 <h1 align="center">🎓 PolyOS Lab</h1>
 
-
 <p align="center">
   <strong>Eğitim kurumları ve bilgisayar laboratuvarları için modern, güvenli ve anlık yönetim ekosistemi.</strong>
 </p>
@@ -21,7 +20,6 @@
   <img src="https://img.shields.io/badge/VITE-5-646CFF?style=flat-square&logo=vite&logoColor=white" alt="Vite">
   <img src="https://img.shields.io/badge/ELECTRON-30-47848F?style=flat-square&logo=electron&logoColor=white" alt="Electron">
   <img src="https://img.shields.io/badge/WEBSOCKET-SECURE-010101?style=flat-square&logo=socket.io&logoColor=white" alt="WebSocket">
-  <img src="https://img.shields.io/badge/PYTHON-TKINTER-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python">
 </p>
 
 <p align="center">
@@ -34,6 +32,7 @@
 
 <p align="center">
   <a href="#-nedir">Nedir?</a> •
+  <a href="#-ekran-görüntüleri">Ekran Görüntüleri</a> •
   <a href="#-özellikler">Özellikler</a> •
   <a href="#-mimari-ve-yapı">Mimari Yapı</a> •
   <a href="#-kurulum">Kurulum</a> •
@@ -45,60 +44,120 @@
 
 ## 🌟 Nedir?
 
-**PolyOS Lab**, okul laboratuvarlarında öğretmenlerin öğrenci bilgisayarlarını canlı olarak izlemesini, kontrol etmesini ve yönetmesini sağlayan modern, yüksek performanslı ve hafif bir laboratuvar yönetim ekosistemidir. 
+**PolyOS Lab**, okul laboratuvarlarında öğretmenlerin öğrenci bilgisayarlarını canlı olarak izlemesini, uzaktan kontrol etmesini ve yönetmesini sağlayan modern, yüksek performanslı ve hafif bir laboratuvar yönetim ekosistemidir. 
 
-Geleneksel ağır ve hantal yönetim araçlarının aksine, Go dilinin sunduğu yerel hız ve eşzamanlılık (concurrency) avantajları ile React/Vite/Electron üçlüsünün esnek arayüz dinamiklerini birleştirir. Ürün %100 oranında **Pardus (Linux)** işletim sistemine uyumlu olacak şekilde geliştirilmiş ve test edilmiştir (macOS işletim sistemi yalnızca geliştiriciler için simülasyon/geliştirme ortamı sağlamak amacıyla desteklenir, üretim/canlı ortamda macOS desteği sunulmamaktadır).
+Geleneksel hantal yönetim yazılımlarının aksine, Go dilinin sunduğu yerel hız ve eşzamanlılık (concurrency) avantajları ile React/Vite/Electron üçlüsünün esnek arayüz dinamiklerini birleştirir. Ürün %100 oranında **Pardus (Linux)** işletim sistemine uyumlu olacak şekilde geliştirilmiş ve test edilmiştir.
+
+> [!NOTE]
+> PolyOS Lab bir PolyOS ürünüdür — Pardus Okul Laboratuvar Yönetim ve Ödev Sistemi.
 
 ---
 
-> [!NOTE]
-> PolyOS Lab bir PolyOS ürünüdür — Pardus Okul Laboratuvar Yönetim ve Ödev Sistemi
+## 🖼️ Ekran Görüntüleri
 
+### 🖥️ Öğretmen Kontrol Paneli - Genel Bakış
+Aynı anda düzinelerce öğrenci istemcisini gerçek zamanlı (canlı yayın) olarak izleyin, tek tıkla toplu işlemler gerçekleştirin veya istemcileri yönetin.
+
+<p align="center">
+  <img src="assets/screenshot1.png" width="90%" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);" alt="Öğretmen Paneli Genel Bakış">
+</p>
+
+### 📁 Hızlı İşlemler & Dosya Transferi
+Seçili öğrenci bilgisayarlarına veya tüm sınıfa sürükle-bırak yöntemiyle saniyeler içinde dosya gönderin, interneti/USB'yi kilitleyin ya da bilgisayarları uzaktan açıp kapatın.
+
+<p align="center">
+  <img src="assets/screenshot2.png" width="90%" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);" alt="Hızlı İşlemler Paneli">
+</p>
+
+---
 
 ## ❓ Neden PolyOS Lab?
 
-PolyOS Lab, okul bilişim laboratuvarlarının ve eğitim ortamlarının yönetimini kolaylaştırmak için tasarlanmış, yerli ve milli bir ekosistemdir. 
-
-* **Pardus Uyumluluğu:** Pardus ve diğer Debian tabanlı sistemler için sıfır yapılandırmayla tam uyumlu çalışır.
-* **Go Gücü ile Yüksek Performans:** Çok düşük kaynak kullanımı sayesinde eski bilgisayarlarda bile donma ve kasma yapmadan arka planda sessizce çalışır.
-* **Modern Teknolojiler:** React, TypeScript ve Electron ile modern, sezgisel ve kullanımı son derece kolay bir öğretmen arayüzü sunar.
-* **Bütüncül Çözüm:** Sadece ekran izleme değil; dosya gönderme, internet/USB kısıtlama, uzaktan güç yönetimi (WOL) ve kilit ekranı gibi sınıfta ihtiyaç duyulan tüm araçları tek bir çatı altında birleştirir.
-
+* **Pardus ve EBA Sınıfları İçin Tam Uyum:** Pardus ve diğer Debian tabanlı sistemler için sıfır yapılandırmayla çalışır.
+* **Go Gücü ile Düşük Kaynak Tüketimi:** Arka planda minimum RAM ve CPU harcayarak eski bilgisayarlarda bile performans kaybı yaşatmaz.
+* **Ultra Düşük Gecikmeli Ekran Paylaşımı:** Öğretmenin ekranını veya öğrencilerin ekranlarını noVNC tabanlı yenilikçi yapısı sayesinde gecikmesiz olarak aktarır.
+* **Bütünleşik Sınıf Kontrolü:** Kilit ekranı, USB bloklama, internet engeli ve dosya gönderme gibi tüm araçlar tek noktada birleşir.
 
 ---
 
 ## 🚀 Özellikler
 
 ### 🖥️ Ekran İzleme ve Uzaktan Kontrol
-* **Düşük Gecikmeli Canlı Yayın**: İstemcilerden sunucuya 2 saniyede bir (uzaktan kontrolde 100ms) optimize edilmiş ekran görüntüleri akar.
-* **Fare ve Klavye Simülasyonu**: Tek tıklamayla uzak makinedeki fare koordinatlarını yüzdesel olarak hesaplar ve `xdotool`/CoreGraphics aracılığıyla anında simüle eder.
+* **Düşük Gecikmeli Canlı Yayın**: İstemcilerden sunucuya optimize edilmiş ekran görüntüleri akar.
+* **noVNC Tabanlı Canlı Akış**: VNC protokolünü tarayıcı tabanlı noVNC kitaplığıyla entegre ederek harici istemci programı ihtiyacını ortadan kaldırır.
+* **Fare ve Klavye Simülasyonu**: Tek tıklamayla uzak makinedeki fare koordinatlarını yüzdesel olarak hesaplar ve `xdotool` / CoreGraphics aracılığıyla anında simüle eder.
 * **Pano (Clipboard) Senkronizasyonu**: Öğretmen panosundaki herhangi bir metni anında öğrenci bilgisayarının kopyalama hafızasına gönderir.
 
 ### 🔒 Güvenlik ve Odak Modu
-* **Girdileri Kapat & Kilitle**: Tek tıkla tüm klavye/fare girdilerini `xinput` seviyesinde kapatır ve Tkinter tabanlı aşılması imkansız, tam ekran bir *"Bu Bilgisayar Kilitlendi"* uyarısı açar.
-* **USB Depolama Engelleme**: İstemci cihazlarında `usb-storage` ve `uas` çekirdek (kernel) modüllerini kara listeye alarak USB belleklerin mounts edilmesini engeller.
-* **İnternet ve Web Filtresi**: 
+* **Girdileri Kapat & Kilitle**: Tek tıkla tüm klavye/fare girdilerini `xinput` seviyesinde kapatır ve aşılması imkansız, tam ekran bir *"Bu Bilgisayar Kilitlendi"* uyarısı açar.
+* **USB Depolama Engelleme**: İstemci cihazlarında `usb-storage` ve `uas` çekirdek (kernel) modüllerini kara listeye alarak USB belleklerin bağlanmasını engeller.
+* **İnternet ve Web Filtresi**:
   - Tüm laboratuvarın internetini tek tıkla ağ seviyesinde kesip açabilir.
   - İstemcilerin `/etc/hosts` dosyasını manipüle ederek yasaklı web sitelerini sunucu üzerindeki özel `/blocked` uyarı sayfasına yönlendirir.
 
 ### ⚡ Hızlı Operasyonlar ve WOL
 * **PolyOS Wake (Wake-on-LAN)**: Bağlanan tüm bilgisayarların MAC adreslerini kaydeder. Bilgisayarlar kapalı olsa bile Ethernet üzerinden sihirli paket (Magic Packet) göndererek topluca uyandırır.
-* **Dosya Transferi**: İstediğiniz bir dosyayı sürükle-bırak yöntemiyle tüm laboratuvara veya seçtiğiniz belirli öğrencilerin masaüstüne doğrudan aktarır.
-* **Uyku Modu**: Cihazları uzaktan bekleme (sleep/suspend) durumuna alır.
+* **Sürükle-Bırak Dosya Transferi**: İstediğiniz bir dosyayı istemci kartının üstüne sürükleyip bırakarak o öğrencinin Masaüstüne doğrudan aktarabilirsiniz.
+* **Seçili Cihazlara Dosya Gönderme**: Gelişmiş "Dosya Gönder" penceresi ile seçilen 3-5 istemciye aynı anda toplu dosya aktarımı.
 
 ---
 
 ## 🏗️ Mimari Yapı
 
-Proje tamamen modüler ve bağımsız üç katmandan oluşur:
+PolyOS Lab, modüler yapısı sayesinde esnek ve ölçeklenebilirdir. Aşağıda, sistemin bileşenleri arasındaki veri ve protokol akışını gösteren detaylı mimariyi inceleyebilirsiniz:
 
 ```mermaid
-graph TD
-    Dashboard[Electron Teacher Dashboard] -->|REST API & WebSockets| Server[Go Central Server]
-    Client1[Go Student Client 1] <-->|WebSockets| Server
-    Client2[Go Student Client 2] <-->|WebSockets| Server
-    Server -->|Magic Packets / WOL| Client1
-    Server -->|Magic Packets / WOL| Client2
+graph TB
+    %% Nodes
+    subgraph DashboardEnv ["💻 Öğretmen Kontrol Paneli (Electron & React)"]
+        DashboardUI["Arayüz (Vite + TS)"]
+        VncViewer["noVNC Viewer (RFB Client)"]
+        ElectronMain["Electron Main Süreci"]
+    end
+
+    subgraph ServerEnv ["🖥️ Merkezi Yönetim Sunucusu (Go)"]
+        WSHub["WebSocket Hub (Komut Dağıtıcı)"]
+        UploadSrv["Dosya Yükleme Servisi (/api/upload)"]
+        WOLSrv["WOL Uyandırma Servisi (UDP)"]
+    end
+
+    subgraph ClientEnv ["👥 Öğrenci Cihazları (Pardus / Linux)"]
+        direction LR
+        subgraph Client1 ["İstemci 1 Daemon"]
+            GoClient1["Go Client (Root Yetkisi)"]
+            VncSrv1["X11VNC Sunucusu"]
+            Kiosk1["Tarayıcı Kiosk Ekranı"]
+        end
+        subgraph Client2 ["İstemci 2 Daemon"]
+            GoClient2["Go Client (Root Yetkisi)"]
+            VncSrv2["X11VNC Sunucusu"]
+            Kiosk2["Tarayıcı Kiosk Ekranı"]
+        end
+    end
+
+    %% Connections
+    DashboardUI -->|1. REST API & WebSocket Kontrol| WSHub
+    VncViewer -->|2. noVNC Akışı (Port 5900)| VncSrv1
+    ElectronMain -->|3. Alt Süreç Başlatma| ServerEnv
+
+    WSHub <-->|4. Çift Yönlü Canlı Bağlantı| GoClient1
+    WSHub <-->|4. Çift Yönlü Canlı Bağlantı| GoClient2
+    
+    UploadSrv -.->|5. HTTP Dosya İletimi| GoClient1
+    UploadSrv -.->|5. HTTP Dosya İletimi| GoClient2
+
+    WOLSrv -.->|6. Magic Packet (Port 9/UDP)| GoClient1
+    WOLSrv -.->|6. Magic Packet (Port 9/UDP)| GoClient2
+
+    %% Styling
+    classDef ogretmen fill:#eff6ff,stroke:#3b82f6,stroke-width:2px,color:#1e3a8a;
+    classDef sunucu fill:#f0fdf4,stroke:#22c55e,stroke-width:2px,color:#14532d;
+    classDef istemci fill:#fff7ed,stroke:#f97316,stroke-width:2px,color:#7c2d12;
+    classDef default fill:#f8fafc,stroke:#cbd5e1,stroke-width:1px,color:#0f172a;
+
+    class DashboardUI,VncViewer,ElectronMain ogretmen;
+    class WSHub,UploadSrv,WOLSrv sunucu;
+    class Client1,Client2 istemci;
 ```
 
 ### 📁 Klasör Yapısı
@@ -108,10 +167,10 @@ graph TD
 
 ---
 
-## ⚙️ Kurulum
+## ⚙️ Kurulum ve Geliştirme
 
 ### Sistem Gereksinimleri
-* **İstemci (Linux/Pardus)**: `xinput`, `scrot`, `xdotool`, `xclip`, `python3-tk`
+* **Öğrenci Bilgisayarı (Linux/Pardus)**: `xinput`, `scrot`, `xdotool`, `xclip`, `python3-tk`, `x11vnc`
 * **Geliştirme Ortamı**: `Go 1.20+`, `Node.js 18+`
 
 ### 1. Sunucuyu Çalıştırın
@@ -119,20 +178,20 @@ graph TD
 cd server
 go run main.go
 ```
-* Varsayılan Port: `8080`
-* Dosya Transferi Yolu: `/uploads`
+* Sunucu Varsayılan Port: `8080`
+* Dosya Transferi Yolu: `/uploads` (Kullanıcı yapılandırmasına göre dinamik olarak yönetilir)
 
-### 2. Dashboard'u Çalıştırın
+### 2. Dashboard'u (Öğretmen Paneli) Çalıştırın
 ```bash
 cd dashboard
 npm install
 npm run electron:dev
 ```
 
-### 3. İstemciyi Çalıştırın (Öğrenci Bilgisayarı)
+### 3. İstemciyi (Öğrenci İstemcisi) Başlatın
 ```bash
 cd client
-# USB ve Giriş cihazı kontrolleri için yönetici yetkisi gereklidir:
+# Giriş cihazlarını (xinput) ve USB erişimini (modprobe) yönetmek için root yetkisi gereklidir:
 sudo go run main.go
 ```
 
@@ -146,7 +205,7 @@ sudo go run main.go
 - [x] Wake-On-LAN Entegrasyonu (PolyOS Wake)
 - [x] Öğretmen Ekranını Öğrencilere Yansıtma (Screen Share)
 - [x] Cihazları Uzaktan Uyku Moduna Alma
-- [ ] Ses Aktarımı ve Mikrofon Yönetimi
+- [x] Sürükle-Bırak Dosya Gönderme Sistemi
 - [ ] Öğrenciler İçin Anlık Soru/Cevap ve Sınav Modu
 - [ ] Ağ Bant Genişliği Limitleme
 
@@ -155,5 +214,3 @@ sudo go run main.go
 ## 📄 Lisans
 
 Bu proje **MIT** lisansı altında lisanslanmıştır. Daha fazla bilgi için `LICENSE` dosyasına göz atabilirsiniz.
-
----
