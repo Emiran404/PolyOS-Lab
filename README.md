@@ -1,10 +1,12 @@
-```text
-####   ###  #     #   #  ###   ####      #      ###  #    
-#   # #   # #     #   # #   # #          #         # #    
-####  #   # #      ###  #   #  ###       #      #### #### 
-#     #   # #       #   #   #     #      #     #   # #   #
-#      ###  ####    #    ###  ####       ####   #### ####
-```
+<div align="center">
+<pre>
+####   ###  #     #   #  ###   ####      #        ###   ####
+#   # #   # #     #   # #   # #          #       #   #  #   #
+####  #   # #      ###  #   #  ###       #       #####  #### 
+#     #   # #       #   #   #     #      #       #   #  #   #
+#      ###  ####    #    ###  ####       ####    #   #  #### 
+</pre>
+</div>
 
 <p align="center">
   <strong>Eğitim kurumları ve bilgisayar laboratuvarları için modern, güvenli ve anlık yönetim ekosistemi.</strong>
