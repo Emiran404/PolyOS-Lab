@@ -137,17 +137,17 @@ graph TB
 
     %% Connections
     DashboardUI -->|1. REST API & WebSocket Kontrol| WSHub
-    VncViewer -->|2. noVNC Akışı (Port 5900)| VncSrv1
+    VncViewer -->|"2. noVNC Akışı (Port 5900)"| VncSrv1
     ElectronMain -->|3. Alt Süreç Başlatma| ServerEnv
 
-    WSHub <-->|4. Çift Yönlü Canlı Bağlantı| GoClient1
-    WSHub <-->|4. Çift Yönlü Canlı Bağlantı| GoClient2
+    WSHub <-->|"4. Çift Yönlü Canlı Bağlantı"| GoClient1
+    WSHub <-->|"4. Çift Yönlü Canlı Bağlantı"| GoClient2
     
     UploadSrv -.->|5. HTTP Dosya İletimi| GoClient1
     UploadSrv -.->|5. HTTP Dosya İletimi| GoClient2
 
-    WOLSrv -.->|6. Magic Packet (Port 9/UDP)| GoClient1
-    WOLSrv -.->|6. Magic Packet (Port 9/UDP)| GoClient2
+    WOLSrv -.->|"6. Magic Packet (Port 9/UDP)"| GoClient1
+    WOLSrv -.->|"6. Magic Packet (Port 9/UDP)"| GoClient2
 
     %% Styling
     classDef ogretmen fill:#eff6ff,stroke:#3b82f6,stroke-width:2px,color:#1e3a8a;
