@@ -1,16 +1,19 @@
-# PolyOS Lab v1.3.5 - Sürüm Açıklaması
+# PolyOS Lab v1.3.6 - Sürüm Açıklaması
 
-🎉 **PolyOS Lab v1.3.5**
+🎉 **PolyOS Lab v1.3.6**
 
-Bu sürüm, yerel Python Tkinter ekran yansıtıcısının (Screen Share) istemci ekranlarında tam olarak oturmaması ve ortada küçük kalması/sınır çizgisi oluşturması sorununu giderir.
+Bu sürüm, sınıf yönetimini daha güçlü ve akıcı hale getirmek amacıyla sisteme **TigerVNC ve noVNC** entegrasyonu ekler. Ayrıca kullanıcıya Ayarlar sekmesinde farklı ekran yansıtma teknolojilerini dinamik olarak seçme imkanı sunar.
 
 ---
 
 ## 🚀 Yenilikler ve İyileştirmeler
 
-### 🖥️ Gerçek Tam Ekran Paylaşımı (True Full-Screen Sharing)
-* **Kök Neden:** Tkinter `Label` nesnesi varsayılan kenarlık (border) ve highlight genişliklerine sahipti. Ayrıca `pack` parametreleri tam ekran koordinatlarına genişlerken ekran kartı sürücülerine göre dış kenarlardan piksel boşluğu bırakabiliyordu.
-* **Çözüm:** `polyos_share_viewer.py` içerisindeki görsel yansıtma `Label` bileşeni sıfır kenarlık (`bd=0`, `highlightthickness=0`) ile sıfırlandı. Resim çözünürlükleri pencere çözünürlüğüne göre dinamik olarak en-boy oranı bozulmadan hesaplanıp, pencerenin tamamını kaplayacak şekilde (`expand=True, fill='both'`) genişletildi.
+### 🔌 TigerVNC + noVNC Entegrasyonu (Önerilen)
+* **Kullanıcı Deneyimi:** Ekran izleme ve uzaktan kontrol sistemleri daha yüksek performanslı ve düşük gecikmeli hale getirildi.
+* **TCP-to-WebSocket Köprüsü:** Go sunucusuna `/ws/vnc-proxy` uç noktası üzerinden websockify proxy desteği eklendi.
+* **noVNC Entegrasyonu:** React & Electron Dashboard tarafına doğrudan `@novnc/novnc` kütüphanesi entegre edildi.
+* **Dinamik Seçim Seçeneği:** Ayarlar paneline "TigerVNC (Önerilen)", "Yerel Python Tkinter" ve "Kiosk Tarayıcı" seçenekleri eklendi. Varsayılan olarak en kararlı ve hızlı olan **TigerVNC** teknolojisi seçildi.
+* **Güvenli Erişim:** VNC sunucu bağlantıları istemcinin yerel proxy portu (`-localhost`) üzerinden tünellenerek, sınıf içi güvenlik standartlarına uygun ve şifresiz kolay yönetim yetenekleriyle sunuldu.
 
 ---
 

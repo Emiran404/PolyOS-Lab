@@ -32,6 +32,8 @@ import {
   HardDrive
 } from 'lucide-react';
 import './App.css';
+// @ts-ignore
+import RFB from '@novnc/novnc';
 
 interface Client {
   id: string;
@@ -44,6 +46,122 @@ let lastRxBytes = 0;
 let lastTxBytes = 0;
 let lastTime = Date.now();
 let pingHistory: Array<{ success: boolean; latency: number }> = [];
+
+interface VncViewerProps {
+  url: string;
+  viewOnly?: boolean;
+  style?: React.CSSProperties;
+}
+
+function VncViewer({ url, viewOnly = false, style }: VncViewerProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const rfbRef = useRef<any>(null);
+  const [status, setStatus] = useState<'connecting' | 'connected' | 'disconnected'>('connecting');
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    setStatus('connecting');
+    console.log("[noVNC] Initializing connection to:", url);
+
+    let rfb: any = null;
+    try {
+      rfb = new RFB(containerRef.current, url, {
+        wsProtocols: ['binary']
+      });
+
+      rfb.scaleViewport = true;
+      rfb.resizeSession = false;
+      rfb.viewOnly = viewOnly;
+
+      rfb.addEventListener('connect', () => {
+        console.log("[noVNC] Connected to", url);
+        setStatus('connected');
+      });
+
+      rfb.addEventListener('disconnect', (e: any) => {
+        console.log("[noVNC] Disconnected:", e.detail.clean);
+        setStatus('disconnected');
+      });
+
+      rfbRef.current = rfb;
+    } catch (err) {
+      console.error("[noVNC] Error initializing:", err);
+      setStatus('disconnected');
+    }
+
+    return () => {
+      if (rfbRef.current) {
+        try {
+          rfbRef.current.disconnect();
+        } catch (e) {
+          console.error("[noVNC] Error during disconnect:", e);
+        }
+        rfbRef.current = null;
+      }
+    };
+  }, [url, viewOnly]);
+
+  return (
+    <div style={{ position: 'relative', width: '100%', height: '100%', minHeight: '100px', ...style }}>
+      {status === 'connecting' && (
+        <div style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(15, 23, 42, 0.85)',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: '#fff',
+          zIndex: 10,
+          gap: '12px'
+        }}>
+          <div style={{
+            width: '32px',
+            height: '32px',
+            border: '3px solid rgba(13, 148, 136, 0.2)',
+            borderTop: '3px solid var(--primary)',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite'
+          }} />
+          <span style={{ fontSize: '14px', fontWeight: 500 }}>VNC Akışı Bağlanıyor...</span>
+        </div>
+      )}
+      {status === 'disconnected' && (
+        <div style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(15, 23, 42, 0.9)',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: '#94a3b8',
+          zIndex: 10,
+          gap: '8px'
+        }}>
+          <Monitor size={32} style={{ opacity: 0.5 }} />
+          <span style={{ fontSize: '13px' }}>VNC Bağlantısı Kesildi veya İstemci VNC Sunucusu Başlatamadı.</span>
+        </div>
+      )}
+      <div 
+        ref={containerRef} 
+        style={{ 
+          width: '100%', 
+          height: '100%', 
+          overflow: 'hidden'
+        }} 
+      />
+    </div>
+  );
+}
 
 function App() {
   const [clients, setClients] = useState<Client[]>([]);
@@ -206,7 +324,7 @@ function App() {
 
   // Görüntü Sistem Teknoloji Seçeneği State'i
   const [shareTechnology, setShareTechnology] = useState(() => {
-    return localStorage.getItem('shareTechnology') || 'set_tech_python';
+    return localStorage.getItem('shareTechnology') || 'set_tech_vnc';
   });
 
   // Hızlı İşlemler (Epoptes) State'leri
@@ -1804,25 +1922,35 @@ function App() {
                       }}
                       title="Uzaktan Kontrolü Başlat"
                     >
-                      <img 
-                        src={`http://localhost:8080/api/screen?clientId=${encodeURIComponent(client.id)}&tick=${refreshTicker}`}
-                        alt={`${client.hostname} ekranı`}
-                        style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
-                        onError={(e) => {
-                          e.currentTarget.style.display = 'none';
-                          const fallback = e.currentTarget.nextSibling as HTMLElement;
-                          if (fallback) fallback.style.display = 'flex';
-                        }}
-                        onLoad={(e) => {
-                          e.currentTarget.style.display = 'block';
-                          const fallback = e.currentTarget.nextSibling as HTMLElement;
-                          if (fallback) fallback.style.display = 'none';
-                        }}
-                      />
-                      <div style={{ display: 'flex', position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center', color: '#64748b', fontSize: '13px', flexDirection: 'column', gap: '8px' }}>
-                        <MonitorPlay size={24} style={{ opacity: 0.5 }} />
-                        <span>Ekran Akışı Bekleniyor...</span>
-                      </div>
+                      {shareTechnology === 'set_tech_vnc' ? (
+                        <VncViewer 
+                          url={`ws://localhost:8080/ws/vnc-proxy?clientId=${encodeURIComponent(client.id)}`}
+                          viewOnly={true}
+                          style={{ width: '100%', height: '100%' }}
+                        />
+                      ) : (
+                        <>
+                          <img 
+                            src={`http://localhost:8080/api/screen?clientId=${encodeURIComponent(client.id)}&tick=${refreshTicker}`}
+                            alt={`${client.hostname} ekranı`}
+                            style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                              const fallback = e.currentTarget.nextSibling as HTMLElement;
+                              if (fallback) fallback.style.display = 'flex';
+                            }}
+                            onLoad={(e) => {
+                              e.currentTarget.style.display = 'block';
+                              const fallback = e.currentTarget.nextSibling as HTMLElement;
+                              if (fallback) fallback.style.display = 'none';
+                            }}
+                          />
+                          <div style={{ display: 'flex', position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center', color: '#64748b', fontSize: '13px', flexDirection: 'column', gap: '8px' }}>
+                            <MonitorPlay size={24} style={{ opacity: 0.5 }} />
+                            <span>Ekran Akışı Bekleniyor...</span>
+                          </div>
+                        </>
+                      )}
                     </div>
                     <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
                       <button className="action-btn" onClick={() => {
@@ -2008,7 +2136,8 @@ function App() {
                   onChange={(e) => handleShareTechChange(e.target.value)}
                   style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--color-border)', fontSize: '14px', backgroundColor: '#fff', outline: 'none' }}
                 >
-                  <option value="set_tech_python">Yerel Python Tkinter (Tavsiye Edilen - Tam Ekran Garantili)</option>
+                  <option value="set_tech_vnc">TigerVNC (Önerilen)</option>
+                  <option value="set_tech_python">Yerel Python Tkinter (Tam Ekran Garantili)</option>
                   <option value="set_tech_browser">Kiosk Tarayıcı (Firefox / Chrome)</option>
                 </select>
               </div>
@@ -2618,21 +2747,35 @@ function App() {
             padding: '24px',
             overflow: 'hidden'
           }}>
-            <img 
-              src={`http://localhost:8080/api/screen?clientId=${encodeURIComponent(controlClient.id)}&tick=${rcTicker}`}
-              alt="Remote Screen"
-              onMouseDown={handleMouseClick}
-              onContextMenu={(e) => { e.preventDefault(); handleMouseClick(e); }}
-              style={{
-                maxWidth: '100%',
-                maxHeight: '100%',
-                objectFit: 'contain',
-                borderRadius: '8px',
-                border: '2px solid #334155',
-                cursor: 'crosshair',
-                backgroundColor: '#000'
-              }}
-            />
+            {shareTechnology === 'set_tech_vnc' ? (
+              <VncViewer 
+                url={`ws://localhost:8080/ws/vnc-proxy?clientId=${encodeURIComponent(controlClient.id)}`}
+                viewOnly={false}
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  borderRadius: '8px',
+                  border: '2px solid #334155',
+                  backgroundColor: '#000'
+                }}
+              />
+            ) : (
+              <img 
+                src={`http://localhost:8080/api/screen?clientId=${encodeURIComponent(controlClient.id)}&tick=${rcTicker}`}
+                alt="Remote Screen"
+                onMouseDown={handleMouseClick}
+                onContextMenu={(e) => { e.preventDefault(); handleMouseClick(e); }}
+                style={{
+                  maxWidth: '100%',
+                  maxHeight: '100%',
+                  objectFit: 'contain',
+                  borderRadius: '8px',
+                  border: '2px solid #334155',
+                  cursor: 'crosshair',
+                  backgroundColor: '#000'
+                }}
+              />
+            )}
           </div>
         </div>
       )}

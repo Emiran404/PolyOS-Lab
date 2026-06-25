@@ -398,6 +398,96 @@ func handleTerminalWS(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func handleVNCProxyWS(w http.ResponseWriter, r *http.Request) {
+	// Upgrade VNC client request to WebSocket
+	conn, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Println("[VNC Proxy] Upgrade error:", err)
+		return
+	}
+	defer conn.Close()
+
+	// Get target client ID (MAC Address) from query parameters
+	clientID := r.URL.Query().Get("clientId")
+	if clientID == "" {
+		log.Println("[VNC Proxy] Missing clientId parameter")
+		return
+	}
+
+	// Resolve the target client structure to get its IP address
+	mutex.Lock()
+	client, exists := clients[clientID]
+	mutex.Unlock()
+
+	if !exists {
+		log.Printf("[VNC Proxy] Client not online or not found: %s\n", clientID)
+		return
+	}
+
+	// Resolve actual remote IP address of student client
+	remoteAddr := client.Conn.RemoteAddr().String()
+	ip, _, err := net.SplitHostPort(remoteAddr)
+	if err != nil {
+		ip = remoteAddr
+	}
+	if ip == "[::1]" || ip == "" {
+		ip = "127.0.0.1"
+	}
+
+	// Connect VNC socket proxy to client's VNC Port (5900)
+	vncTarget := fmt.Sprintf("%s:5900", ip)
+	log.Printf("[VNC Proxy] Proxying WebSocket to VNC TCP target: %s\n", vncTarget)
+
+	vncConn, err := net.DialTimeout("tcp", vncTarget, 5*time.Second)
+	if err != nil {
+		log.Printf("[VNC Proxy Error] Connection failed to %s: %v\n", vncTarget, err)
+		return
+	}
+	defer vncConn.Close()
+
+	// Proxy data Bidirectionally
+	errChan := make(chan error, 2)
+
+	// Go-Routine 1: WebSocket to VNC TCP Socket
+	go func() {
+		for {
+			mt, message, err := conn.ReadMessage()
+			if err != nil {
+				errChan <- err
+				return
+			}
+			// VNC clients send binary frames (or occasionally text depending on protocol wrappers)
+			_ = mt
+			_, err = vncConn.Write(message)
+			if err != nil {
+				errChan <- err
+				return
+			}
+		}
+	}()
+
+	// Go-Routine 2: VNC TCP Socket to WebSocket
+	go func() {
+		buf := make([]byte, 65535)
+		for {
+			n, err := vncConn.Read(buf)
+			if err != nil {
+				errChan <- err
+				return
+			}
+			err = conn.WriteMessage(websocket.BinaryMessage, buf[:n])
+			if err != nil {
+				errChan <- err
+				return
+			}
+		}
+	}()
+
+	// Wait until any of the proxy routines fail
+	readErr := <-errChan
+	log.Printf("[VNC Proxy] Session closed for %s: %v\n", vncTarget, readErr)
+}
+
 func handleTerminalRun(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
@@ -1118,6 +1208,7 @@ func main() {
 	http.HandleFunc("/ws/teacher", localOnly(handleTeacherWS))
 	http.HandleFunc("/share", handleSharePage)
 	http.HandleFunc("/ws/student-viewer", handleStudentViewerWS)
+	http.HandleFunc("/ws/vnc-proxy", handleVNCProxyWS)
 	http.HandleFunc("/ws/logs", localOnly(handleLogsWS))
 	http.HandleFunc("/ws/terminal", localOnly(handleTerminalWS))
 	http.HandleFunc("/api/terminal/run", localOnly(handleTerminalRun))

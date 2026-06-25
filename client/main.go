@@ -29,7 +29,7 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-const clientVersion = "1.3.5"
+const clientVersion = "1.3.6"
 
 var (
 	captureInterval = 2000 * time.Millisecond
@@ -1035,6 +1035,66 @@ func blockUSBDevices(block bool) error {
 }
 
 var (
+	vncServerCmd  *exec.Cmd
+	vncServerMutex sync.Mutex
+)
+
+func startVNCServer() {
+	vncServerMutex.Lock()
+	defer vncServerMutex.Unlock()
+
+	if vncServerCmd != nil {
+		return // Zaten açık
+	}
+
+	log.Println("[VNC] VNC Sunucusu başlatılıyor...")
+	killProcessByName("x11vnc")
+	killProcessByName("x0vncserver")
+
+	// Try x11vnc first (recommended for raw display mirroring on existing X11 sessions)
+	// -localhost: safe, only accept local proxy connections from our websockify server
+	// -forever: stay alive after client disconnects
+	// -shared: multiple clients allowed
+	// -nopw: bypass authentication since PolyOS ws token guarantees security at server boundaries
+	vncArgs := []string{"-localhost", "-forever", "-shared", "-nopw", "-bg", "-display", ":0"}
+	
+	// Create run configuration using client wrappers
+	c := runGUICommand("x11vnc", vncArgs...)
+	err := c.Start()
+	if err == nil {
+		vncServerCmd = c
+		log.Println("[VNC] x11vnc sunucusu başarıyla arka planda başlatıldı.")
+		return
+	}
+
+	// Try TigerVNC x0vncserver fallback
+	tigerArgs := []string{"-display", ":0", "-SecurityTypes", "None", "-localhost"}
+	c2 := runGUICommand("x0vncserver", tigerArgs...)
+	err2 := c2.Start()
+	if err2 == nil {
+		vncServerCmd = c2
+		log.Println("[VNC] TigerVNC x0vncserver başarıyla arka planda başlatıldı.")
+		return
+	}
+
+	log.Printf("[VNC ERROR] VNC sunucusu başlatılamadı. x11vnc veya x0vncserver kurulu olmalı: %v / %v\n", err, err2)
+}
+
+func stopVNCServer() {
+	vncServerMutex.Lock()
+	defer vncServerMutex.Unlock()
+
+	if vncServerCmd != nil {
+		_ = vncServerCmd.Process.Kill()
+		_ = vncServerCmd.Wait()
+		vncServerCmd = nil
+	}
+	killProcessByName("x11vnc")
+	killProcessByName("x0vncserver")
+	log.Println("[VNC] VNC Sunucusu durduruldu.")
+}
+
+var (
 	screenShareCmd    *exec.Cmd
 	screenShareMutex  sync.Mutex
 )
@@ -1579,6 +1639,13 @@ func main() {
 	// Konfigürasyonu yükle
 	loadConfig()
 
+	shareTechMutex.RLock()
+	initTech := shareTechnology
+	shareTechMutex.RUnlock()
+	if initTech == "vnc" {
+		go startVNCServer()
+	}
+
 	// Eğer sunucu adresi belirtilmemişse veya varsayılansa UDP keşfi dene
 	if serverURL == "ws://localhost:8080/ws" {
 		discoverServer()
@@ -1683,9 +1750,15 @@ func main() {
 						if action == "set_tech_browser" {
 							shareTechnology = "browser"
 							log.Println("Ekran Paylaşım Teknolojisi: Kiosk Tarayıcı olarak ayarlandı.")
+							stopVNCServer()
 						} else if action == "set_tech_python" {
 							shareTechnology = "native_python"
 							log.Println("Ekran Paylaşım Teknolojisi: Yerel Python (Tkinter) olarak ayarlandı.")
+							stopVNCServer()
+						} else if action == "set_tech_vnc" {
+							shareTechnology = "vnc"
+							log.Println("Ekran Paylaşım Teknolojisi: TigerVNC olarak ayarlandı.")
+							go startVNCServer()
 						}
 						shareTechMutex.Unlock()
 					} else if action == "run_terminal" {
@@ -1767,6 +1840,7 @@ func main() {
 			time.Sleep(5 * time.Second)
 		case <-interrupt:
 			log.Println("İstemci kapatılıyor...")
+			stopVNCServer()
 			wsMutex.Lock()
 			wsConn = nil
 			wsMutex.Unlock()
