@@ -96,13 +96,13 @@ func sendClientLogToServer(msg string) {
 
 func (w *clientLogWriter) Write(p []byte) (n int, err error) {
 	msg := strings.TrimSpace(string(p))
-	
+
 	if logFile != nil {
 		n, err = logFile.Write(p)
 	} else {
 		n, err = os.Stdout.Write(p)
 	}
-	
+
 	sendClientLogToServer(msg)
 	return n, err
 }
@@ -153,7 +153,7 @@ func loadConfig() {
 
 func discoverServer() {
 	log.Println("Multicast (mDNS) ve UDP üzerinden sunucu aranıyor (Port: 9999)...")
-	
+
 	// 1. Multicast deneme
 	mAddr, err := net.ResolveUDPAddr("udp4", "224.0.0.251:9999")
 	if err == nil {
@@ -313,8 +313,6 @@ func getDiskDetails() (float64, float64, float64) {
 	if runtime.GOOS == "windows" {
 		path = "C:\\"
 	}
-	
-
 
 	var stat syscall.Statfs_t
 	err := syscall.Statfs(path, &stat)
@@ -334,13 +332,13 @@ func getDiskDetails() (float64, float64, float64) {
 }
 
 func setupLogging() {
-	
+
 	logDir := "/var/log"
 	logFilePath := filepath.Join(logDir, "polyos-client.log")
-	
+
 	// Ensure directory exists
 	_ = os.MkdirAll(logDir, 0755)
-	
+
 	var err error
 	logFile, err = os.OpenFile(logFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 	if err != nil {
@@ -447,7 +445,7 @@ func drawMockScreen() []byte {
 			img.Set(x, y, bg)
 		}
 	}
-	
+
 	// Ortaya basit bir turkuaz kutu çizelim (PolyOS Lab logosu simülasyonu)
 	fg := color.RGBA{13, 148, 136, 255}
 	for x := 350; x < 450; x++ {
@@ -632,10 +630,10 @@ func runGUICommand(name string, arg ...string) *exec.Cmd {
 		if u, err := user.Lookup(userStr); err == nil {
 			uid, _ := strconv.ParseUint(u.Uid, 10, 32)
 			gid, _ := strconv.ParseUint(u.Gid, 10, 32)
-			
+
 			// Append DBUS address so notify-send/GUI notifications work under sudo
 			env = append(env, fmt.Sprintf("DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/%d/bus", uid))
-			
+
 			c.SysProcAttr = &syscall.SysProcAttr{
 				Credential: &syscall.Credential{
 					Uid: uint32(uid),
@@ -656,7 +654,7 @@ func runGUICommand(name string, arg ...string) *exec.Cmd {
 
 func runAndMonitorGUICommand(name string, executable string, arg ...string) (*exec.Cmd, error) {
 	c := runGUICommand(executable, arg...)
-	
+
 	var outputBuf bytes.Buffer
 	c.Stdout = &outputBuf
 	c.Stderr = &outputBuf
@@ -1005,7 +1003,7 @@ func ensureVNCInstalled() {
 	}
 
 	log.Println("[VNC] VNC sunucuları (x11vnc / x0vncserver) sistemde bulunamadı. Otomatik kurulum başlatılıyor...")
-	
+
 	// Paket listelerini güncelle ve x11vnc kur
 	_ = exec.Command("apt-get", "update", "-y").Run()
 	cmd := exec.Command("apt-get", "install", "-y", "x11vnc")
@@ -1020,7 +1018,7 @@ func ensureVNCInstalled() {
 }
 
 var (
-	vncServerCmd  *exec.Cmd
+	vncServerCmd   *exec.Cmd
 	vncServerMutex sync.Mutex
 )
 
@@ -1044,7 +1042,7 @@ func startVNCServer() {
 	// -shared: multiple clients allowed
 	// -nopw: bypass authentication since PolyOS ws token guarantees security at server boundaries
 	vncArgs := []string{"-forever", "-shared", "-nopw", "-bg", "-display", ":0"}
-	
+
 	// Create run configuration using client wrappers
 	c := runGUICommand("x11vnc", vncArgs...)
 	err := c.Start()
@@ -1082,8 +1080,8 @@ func stopVNCServer() {
 }
 
 var (
-	screenShareCmd    *exec.Cmd
-	screenShareMutex  sync.Mutex
+	screenShareCmd   *exec.Cmd
+	screenShareMutex sync.Mutex
 )
 
 func startScreenShareViewer() {
@@ -1095,7 +1093,7 @@ func startScreenShareViewer() {
 	}
 
 	shareURL := getShareURL()
-	
+
 	shareTechMutex.RLock()
 	currentTech := shareTechnology
 	shareTechMutex.RUnlock()
@@ -1276,7 +1274,7 @@ func runSystemCommand(action string) {
 		_ = blockUSBDevices(false)
 		return
 	}
-	
+
 	if action == "screen_share_on" {
 		setInputsEnabled(false)
 		startScreenShareViewer()
@@ -1287,7 +1285,7 @@ func runSystemCommand(action string) {
 		setInputsEnabled(true)
 		return
 	}
-	
+
 	if strings.HasPrefix(action, "open_url:") {
 		url := strings.TrimPrefix(action, "open_url:")
 		c := runGUICommand("xdg-open", url)
@@ -1315,7 +1313,7 @@ func runSystemCommand(action string) {
 		_ = exec.Command(iptablesPath, "-F", "POLYOS_BLOCK").Run()
 		_ = exec.Command(iptablesPath, "-A", "POLYOS_BLOCK", "-o", "lo", "-j", "ACCEPT").Run()
 		_ = exec.Command(iptablesPath, "-A", "POLYOS_BLOCK", "-i", "lo", "-j", "ACCEPT").Run()
-		
+
 		if serverIP != "" && serverIP != "localhost" && serverIP != "127.0.0.1" {
 			_ = exec.Command(iptablesPath, "-A", "POLYOS_BLOCK", "-d", serverIP, "-j", "ACCEPT").Run()
 			_ = exec.Command(iptablesPath, "-A", "POLYOS_BLOCK", "-s", serverIP, "-j", "ACCEPT").Run()
@@ -1328,7 +1326,7 @@ func runSystemCommand(action string) {
 		_ = exec.Command(iptablesPath, "-A", "POLYOS_BLOCK", "-d", "172.16.0.0/12", "-j", "ACCEPT").Run()
 		_ = exec.Command(iptablesPath, "-A", "POLYOS_BLOCK", "-s", "172.16.0.0/12", "-j", "ACCEPT").Run()
 		_ = exec.Command(iptablesPath, "-A", "POLYOS_BLOCK", "-j", "REJECT").Run()
-		
+
 		if exec.Command(iptablesPath, "-C", "OUTPUT", "-j", "POLYOS_BLOCK").Run() != nil {
 			_ = exec.Command(iptablesPath, "-I", "OUTPUT", "1", "-j", "POLYOS_BLOCK").Run()
 		}
@@ -1398,7 +1396,7 @@ func runSystemCommand(action string) {
 		}
 		return
 	}
-	
+
 	// Handle Linux client actions
 	switch action {
 	case "lock":
@@ -1505,7 +1503,7 @@ func handleInputEvent(event string, data map[string]interface{}) {
 		xPct, _ := data["x"].(float64)
 		yPct, _ := data["y"].(float64)
 		w, h := getScreenResolution()
-		
+
 		xStr := strconv.Itoa(int(xPct * float64(w)))
 		yStr := strconv.Itoa(int(yPct * float64(h)))
 
@@ -1624,12 +1622,12 @@ func main() {
 					log.Println("Sunucu bağlantısı koptu (Okuma hatası):", err)
 					return
 				}
-				
+
 				var cmdData map[string]interface{}
 				if err := json.Unmarshal(message, &cmdData); err == nil {
 					action, _ := cmdData["action"].(string)
 					event, _ := cmdData["event"].(string)
-					
+
 					if action == "file_transfer" {
 						url, _ := cmdData["url"].(string)
 						filename, _ := cmdData["filename"].(string)
@@ -1761,7 +1759,7 @@ var (
 
 func executeTerminalCommand(cmdStr, cmdID string) {
 	log.Printf("[Terminal] Komut çalıştırılıyor: %s\n", cmdStr)
-	
+
 	terminalCwdMutex.Lock()
 	if terminalCwd == "" {
 		if home, err := os.UserHomeDir(); err == nil {
@@ -1781,7 +1779,7 @@ func executeTerminalCommand(cmdStr, cmdID string) {
 		wrappedCmd := fmt.Sprintf("%s; echo ''; echo 'POLYOS_CWD:'; pwd", cmdStr)
 		cmd = exec.Command("/bin/sh", "-c", wrappedCmd)
 	}
-	
+
 	cmd.Dir = currentDir
 
 	out, err := cmd.CombinedOutput()
@@ -1888,7 +1886,7 @@ func updateHostsFile(domain string, block bool) error {
 	}
 
 	output := strings.Join(newLines, "\n")
-	
+
 	// Try writing directly first
 	err = os.WriteFile(hostsPath, []byte(output), 0644)
 	if err != nil {
@@ -1916,7 +1914,7 @@ func startLocalRedirectServer(serverURL string) {
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		host := r.Host
 		serverHost := getServerHost(serverURL)
-		
+
 		// Prevent routing loops for local/server domains
 		if strings.Contains(host, "localhost") || strings.Contains(host, "127.0.0.1") || strings.Contains(host, serverHost) {
 			w.WriteHeader(http.StatusNotFound)
