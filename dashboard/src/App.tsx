@@ -667,6 +667,12 @@ function App() {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!controlClient) return;
       
+      // Eğer kullanıcı arayüzdeki bir input alanına yazı yazıyorsa VNC klavye yakalamasını devre dışı bırak
+      const activeEl = document.activeElement;
+      if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA')) {
+        return;
+      }
+      
       if (e.key === 'Escape') {
         e.preventDefault();
         stopRemoteControl();
@@ -680,8 +686,27 @@ function App() {
       }
     };
 
+    const handleGlobalPaste = (e: ClipboardEvent) => {
+      if (!controlClient) return;
+
+      // Eğer kullanıcı arayüzdeki bir input alanına yapıştırma yapıyorsa müdahale etme
+      const activeEl = document.activeElement;
+      if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA')) {
+        return;
+      }
+
+      const pastedText = e.clipboardData?.getData('text');
+      if (pastedText) {
+        sendInputEvent('clipboard', { text: pastedText });
+      }
+    };
+
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener('paste', handleGlobalPaste);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('paste', handleGlobalPaste);
+    };
   }, [controlClient]);
 
   // Uzaktan kontrol ekran yenileme döngüsü (150ms)
