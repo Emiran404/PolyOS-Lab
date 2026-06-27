@@ -44,6 +44,7 @@ body {
 .sidebar.closed { width: 80px; }
 
 .sidebar-logo {
+  position: relative;
   padding: 20px;
   border-bottom: 1px solid var(--color-border);
   display: flex;
@@ -51,7 +52,10 @@ body {
   justify-content: space-between;
   min-height: 80px;
 }
-.sidebar.closed .sidebar-logo { justify-content: center; }
+.sidebar.closed .sidebar-logo {
+  justify-content: center;
+  padding: 20px 0;
+}
 
 .logo-text {
   font-size: 18px;
@@ -63,16 +67,27 @@ body {
 }
 
 .toggle-btn {
-  padding: 8px;
-  border-radius: 8px;
-  border: none;
-  background-color: var(--color-background-secondary);
+  position: absolute;
+  right: -14px;
+  top: 26px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid var(--color-border);
+  background-color: var(--color-surface);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   color: var(--color-text-muted);
   transition: all 0.2s;
+  z-index: 1010;
+}
+.toggle-btn:hover {
+  background-color: var(--color-background-secondary);
+  color: var(--primary);
+  transform: translateY(0) scale(1.05);
 }
 
 .user-section {
