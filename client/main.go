@@ -160,7 +160,7 @@ func discoverServer() {
 		mConn, err := net.ListenMulticastUDP("udp4", nil, mAddr)
 		if err == nil {
 			defer mConn.Close()
-			_ = mConn.SetReadDeadline(time.Now().Add(4 * time.Second))
+			_ = mConn.SetReadDeadline(time.Now().Add(3 * time.Second))
 			buf := make([]byte, 1024)
 			n, _, err := mConn.ReadFromUDP(buf)
 			if err == nil {
@@ -191,23 +191,131 @@ func discoverServer() {
 	}
 	defer conn.Close()
 
-	_ = conn.SetReadDeadline(time.Now().Add(4 * time.Second))
+	_ = conn.SetReadDeadline(time.Now().Add(3 * time.Second))
 	buf := make([]byte, 1024)
 	n, _, err := conn.ReadFromUDP(buf)
-	if err != nil {
-		log.Println("Sunucu keşfi zaman aşımına uğradı, varsayılan/yapılandırılmış adres kullanılacak.")
+	if err == nil {
+		message := string(buf[:n])
+		if strings.HasPrefix(message, "POLYOS_SERVER:") {
+			parts := strings.Split(message, ":")
+			if len(parts) >= 3 {
+				serverURL = fmt.Sprintf("ws://%s:%s/ws", parts[1], parts[2])
+				log.Println("Sunucu Broadcast ile otomatik keşfedildi:", serverURL)
+				return
+			}
+		}
+	}
+
+	// 3. Alt Ağ Tarama Fallback (Subnet Scan)
+	log.Println("UDP keşif istekleri başarısız oldu. Yerel ağ (Alt Ağ / Subnet) taranıyor...")
+	foundIP := scanSubnet()
+	if foundIP != "" {
+		serverURL = fmt.Sprintf("ws://%s:8080/ws", foundIP)
+		log.Println("Sunucu yerel ağ taraması (Port: 8080) ile keşfedildi:", serverURL)
 		return
 	}
 
-	message := string(buf[:n])
-	if strings.HasPrefix(message, "POLYOS_SERVER:") {
-		parts := strings.Split(message, ":")
-		if len(parts) >= 3 {
-			serverURL = fmt.Sprintf("ws://%s:%s/ws", parts[1], parts[2])
-			log.Println("Sunucu Broadcast ile otomatik keşfedildi:", serverURL)
+	log.Println("Yerel ağ taramasında da etkin bir PolyOS Lab sunucusu bulunamadı, varsayılan/yapılandırılmış adres kullanılacak.")
+}
+
+func getSubnetIPs() ([]string, error) {
+	var ips []string
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		return nil, err
+	}
+	for _, addr := range addrs {
+		ipNet, ok := addr.(*net.IPNet)
+		if !ok || ipNet.IP.IsLoopback() {
+			continue
+		}
+		ip4 := ipNet.IP.To4()
+		if ip4 == nil {
+			continue
+		}
+		
+		// Sadece /24 alt ağları için tarama yapalım (255.255.255.0)
+		mask := ipNet.Mask
+		if len(mask) == 4 && mask[0] == 255 && mask[1] == 255 && mask[2] == 255 && mask[3] == 0 {
+			baseIP := ip4.Mask(mask)
+			for i := 1; i <= 254; i++ {
+				scanIP := net.IPv4(baseIP[0], baseIP[1], baseIP[2], byte(i))
+				if !scanIP.Equal(ip4) { // Kendimizi taramayalım
+					ips = append(ips, scanIP.String())
+				}
+			}
 		}
 	}
+	return ips, nil
 }
+
+func scanSubnet() string {
+	ips, err := getSubnetIPs()
+	if err != nil || len(ips) == 0 {
+		return ""
+	}
+
+	results := make(chan string, len(ips))
+	var wg sync.WaitGroup
+
+	// Eş zamanlı soket tüketimini limitlemek için semaphore
+	sem := make(chan struct{}, 50)
+
+	for _, ip := range ips {
+		wg.Add(1)
+		go func(targetIP string) {
+			defer wg.Done()
+			select {
+			case sem <- struct{}{}:
+				defer func() { <-sem }()
+			case <-time.After(2 * time.Second):
+				return
+			}
+
+			address := fmt.Sprintf("%s:8080", targetIP)
+			conn, err := net.DialTimeout("tcp", address, 300*time.Millisecond)
+			if err != nil {
+				return
+			}
+			conn.Close()
+
+			// Port açık, PolyOS Lab sunucusu mu diye kontrol et
+			client := http.Client{
+				Timeout: 400 * time.Millisecond,
+			}
+			resp, err := client.Get(fmt.Sprintf("http://%s/blocked", address))
+			if err != nil {
+				return
+			}
+			defer resp.Body.Close()
+
+			if resp.StatusCode == http.StatusOK {
+				buf := make([]byte, 512)
+				n, _ := resp.Body.Read(buf)
+				content := string(buf[:n])
+				if strings.Contains(content, "Alanya MTAL") || strings.Contains(content, "Innovation Lab") {
+					results <- targetIP
+				}
+			}
+		}(ip)
+	}
+
+	// Tüm goroutine'lerin bitişini bekleyen izleyici
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
+
+	// İlk bulunan sunucu IP'sini dön
+	for res := range results {
+		if res != "" {
+			return res
+		}
+	}
+
+	return ""
+}
+
 
 type TelemetryData struct {
 	CPUUsage  float64 `json:"cpuUsage"`
