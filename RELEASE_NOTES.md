@@ -1,3 +1,30 @@
+# PolyOS Lab v1.4.1 - Sürüm Açıklaması
+
+🎉 **PolyOS Lab v1.4.1**
+
+Bu sürüm; ilk kurulumlar için şık bir karşılama ekranı, dinamik öğretmen profili, sistem sıfırlama işlevi ve alt ağ (subnet) üzerinden otomatik sunucu keşif mekanizması ekler.
+
+---
+
+## 🚀 Yenilikler ve İyileştirmeler
+
+### 🏫 Karşılama (Onboarding) Ekranı ve Dinamik Profil
+* **İlk Kurulum Arayüzü:** Dashboard ilk kez açıldığında öğretmen adı ve görevini soran animasyonlu modern bir karşılama ekranı eklendi.
+* **Geçiş Efektleri:** Kurulum tamamlandığında dönen yükleme animasyonu ve 500ms'lik yumuşak sayfa solma (fade-out) geçişi uygulandı.
+* **Dinamik Sidebar & Selamlama:** Sidebar profili ve sağ üst karşılama başlığı öğretmen bilgilerine göre dinamik olarak güncellenir hale getirildi.
+* **Profil Düzenleme:** Ayarlar sekmesine öğretmen bilgilerini düzenleme alanları eklendi.
+
+### ⚠️ Tehlikeli Bölge ve Sistem Sıfırlama
+* **Sistemi Sıfırla:** Ayarlar sekmesine eklenen "Tehlikeli Bölge" paneli ile tüm kullanıcı verileri sıfırlanarak sistem ilk kurulum (onboarding) durumuna döndürülebilir hale getirildi.
+
+### 📡 İstemci Tarafında Alt Ağ Taraması (Subnet Scan)
+* **Otomatik Ağ Taraması:** Sanal makine (VM) veya router engelleri nedeniyle UDP mDNS/Broadcast keşfi başarısız olduğunda istemcinin yerel `/24` ağını `8080` portundan saniyeler içinde tarayıp sunucuyu otomatik bulmasını sağlayan fallback mekanizması eklendi.
+
+### 📐 Arayüz İyileştirmeleri
+* **Sidebar Düzenlemesi:** Sidebar kapatıldığında okul emojisinin hizalanması ve kapatma butonunun bölme çizgisinde havada duracak şekilde şıklaştırılması sağlandı.
+
+---
+
 # PolyOS Lab v1.3.11 - Sürüm Açıklaması
 
 🎉 **PolyOS Lab v1.3.11**
