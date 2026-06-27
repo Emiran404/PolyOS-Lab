@@ -48,3 +48,8 @@ Thumbs.db
 *.njsproj
 *.sln
 *.sw?
+
+# Presentation and Guide Files
+teknofest_sunum_rehberi.md
+*sunum*.md
+*rehber*.md
