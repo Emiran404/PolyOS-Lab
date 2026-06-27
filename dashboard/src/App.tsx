@@ -176,6 +176,7 @@ function App() {
 
   const [onboardName, setOnboardName] = useState('Emirhan Gök');
   const [onboardRole, setOnboardRole] = useState('Sistem Yöneticisi');
+  const [isOnboardingLoading, setIsOnboardingLoading] = useState(false);
 
   const handleOnboardingSubmit = (name: string, role: string) => {
     localStorage.setItem('polyos_teacher_name', name);
@@ -2754,7 +2755,11 @@ function App() {
             
             <form className="onboarding-form" onSubmit={(e) => {
               e.preventDefault();
-              handleOnboardingSubmit(onboardName, onboardRole);
+              setIsOnboardingLoading(true);
+              setTimeout(() => {
+                handleOnboardingSubmit(onboardName, onboardRole);
+                setIsOnboardingLoading(false);
+              }, 1500);
             }}>
               <div className="onboarding-group">
                 <label className="onboarding-label" htmlFor="teacher-name">Öğretmen Adı / Soyadı</label>
@@ -2766,6 +2771,7 @@ function App() {
                   onChange={(e) => setOnboardName(e.target.value)}
                   placeholder="Örn. Emirhan Gök"
                   required
+                  disabled={isOnboardingLoading}
                 />
               </div>
               
@@ -2779,12 +2785,22 @@ function App() {
                   onChange={(e) => setOnboardRole(e.target.value)}
                   placeholder="Örn. Sistem Yöneticisi veya Bilgisayar Öğretmeni"
                   required
+                  disabled={isOnboardingLoading}
                 />
               </div>
               
-              <button className="onboarding-btn" type="submit">
-                Kurulumu Tamamla
-                <ChevronRight size={18} />
+              <button className="onboarding-btn" type="submit" disabled={isOnboardingLoading}>
+                {isOnboardingLoading ? (
+                  <>
+                    <RefreshCw size={18} className="spinner" />
+                    Sistem Yapılandırılıyor...
+                  </>
+                ) : (
+                  <>
+                    Kurulumu Tamamla
+                    <ChevronRight size={18} />
+                  </>
+                )}
               </button>
             </form>
           </div>

@@ -649,4 +649,8 @@ body {
   background-color: #b91c1c;
 }
 
+.spinner {
+  animation: spin 1s linear infinite;
+}
+
 
