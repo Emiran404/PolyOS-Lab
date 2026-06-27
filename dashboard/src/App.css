@@ -653,4 +653,18 @@ body {
   animation: spin 1s linear infinite;
 }
 
+.onboarding-wrapper.fade-out {
+  animation: onboardingFadeOut 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  pointer-events: none;
+}
+
+@keyframes onboardingFadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
 

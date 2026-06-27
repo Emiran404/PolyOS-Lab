@@ -177,6 +177,7 @@ function App() {
   const [onboardName, setOnboardName] = useState('Emirhan Gök');
   const [onboardRole, setOnboardRole] = useState('Sistem Yöneticisi');
   const [isOnboardingLoading, setIsOnboardingLoading] = useState(false);
+  const [isOnboardingFadingOut, setIsOnboardingFadingOut] = useState(false);
 
   const handleOnboardingSubmit = (name: string, role: string) => {
     localStorage.setItem('polyos_teacher_name', name);
@@ -188,7 +189,7 @@ function App() {
   };
 
   const handleResetSystem = () => {
-    if (window.confirm('Sistemi sıfırlamak istediğinize emin misiniz? Tüm yapılandırma silinecektir ve hoş geldiniz ekranına döneceksiniz.')) {
+    if (window.confirm('Sistemi sıfırlamak istediğinize emin misiniz? Tüm yapılandırma silinecektir.')) {
       localStorage.removeItem('polyos_onboarded');
       localStorage.removeItem('polyos_teacher_name');
       localStorage.removeItem('polyos_teacher_role');
@@ -2744,8 +2745,8 @@ function App() {
 
   return (
     <div className="layout">
-      {!isOnboarded && (
-        <div className="onboarding-wrapper">
+      {(!isOnboarded || isOnboardingFadingOut) && (
+        <div className={`onboarding-wrapper ${isOnboardingFadingOut ? 'fade-out' : ''}`}>
           <div className="onboarding-card">
             <div className="onboarding-logo">🏫</div>
             <h1 className="onboarding-title">PolyOS Lab'a Hoş Geldiniz</h1>
@@ -2757,8 +2758,12 @@ function App() {
               e.preventDefault();
               setIsOnboardingLoading(true);
               setTimeout(() => {
-                handleOnboardingSubmit(onboardName, onboardRole);
                 setIsOnboardingLoading(false);
+                setIsOnboardingFadingOut(true);
+                setTimeout(() => {
+                  handleOnboardingSubmit(onboardName, onboardRole);
+                  setIsOnboardingFadingOut(false);
+                }, 500);
               }, 1500);
             }}>
               <div className="onboarding-group">
