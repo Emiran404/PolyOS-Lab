@@ -164,6 +164,44 @@ function VncViewer({ url, viewOnly = false, style }: VncViewerProps) {
 }
 
 function App() {
+  const [isOnboarded, setIsOnboarded] = useState(() => {
+    return localStorage.getItem('polyos_onboarded') === 'true';
+  });
+  const [teacherName, setTeacherName] = useState(() => {
+    return localStorage.getItem('polyos_teacher_name') || 'Emirhan Gök';
+  });
+  const [teacherRole, setTeacherRole] = useState(() => {
+    return localStorage.getItem('polyos_teacher_role') || 'Sistem Yöneticisi';
+  });
+
+  const [onboardName, setOnboardName] = useState('Emirhan Gök');
+  const [onboardRole, setOnboardRole] = useState('Sistem Yöneticisi');
+
+  const handleOnboardingSubmit = (name: string, role: string) => {
+    localStorage.setItem('polyos_teacher_name', name);
+    localStorage.setItem('polyos_teacher_role', role);
+    localStorage.setItem('polyos_onboarded', 'true');
+    setTeacherName(name);
+    setTeacherRole(role);
+    setIsOnboarded(true);
+  };
+
+  const handleResetSystem = () => {
+    if (window.confirm('Sistemi sıfırlamak istediğinize emin misiniz? Tüm yapılandırma silinecektir ve hoş geldiniz ekranına döneceksiniz.')) {
+      localStorage.removeItem('polyos_onboarded');
+      localStorage.removeItem('polyos_teacher_name');
+      localStorage.removeItem('polyos_teacher_role');
+      localStorage.removeItem('defaultStartTab');
+      setTeacherName('Emirhan Gök');
+      setTeacherRole('Sistem Yöneticisi');
+      setOnboardName('Emirhan Gök');
+      setOnboardRole('Sistem Yöneticisi');
+      setIsOnboarded(false);
+      setActiveTab('summary');
+      setDefaultStartTab('summary');
+    }
+  };
+
   const [clients, setClients] = useState<Client[]>([]);
   const [activeTab, setActiveTab] = useState(() => {
     return localStorage.getItem('defaultStartTab') || 'summary';
@@ -1098,7 +1136,7 @@ function App() {
 
             <div className="page-header">
               <div>
-                <h1 className="greeting">Hoş Geldiniz, Emirhan Gök 👋</h1>
+                <h1 className="greeting">Hoş Geldiniz, {teacherName} 👋</h1>
                 <p className="sub-greeting">PolyOS Lab Yönetim Paneli • {new Date().toLocaleDateString('tr-TR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
               </div>
               <div className="header-actions">
@@ -2278,6 +2316,34 @@ function App() {
                 </select>
               </div>
 
+              <hr style={{ border: 'none', borderTop: '1px solid var(--color-border)', margin: '10px 0' }} />
+
+              <div>
+                <label style={{ display: 'block', fontWeight: 600, marginBottom: '8px' }}>Öğretmen Adı</label>
+                <input 
+                  type="text" 
+                  value={teacherName} 
+                  onChange={(e) => {
+                    setTeacherName(e.target.value);
+                    localStorage.setItem('polyos_teacher_name', e.target.value);
+                  }}
+                  style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--color-border)', fontSize: '14px', outline: 'none' }} 
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontWeight: 600, marginBottom: '8px' }}>Görevi / Ünvanı</label>
+                <input 
+                  type="text" 
+                  value={teacherRole} 
+                  onChange={(e) => {
+                    setTeacherRole(e.target.value);
+                    localStorage.setItem('polyos_teacher_role', e.target.value);
+                  }}
+                  style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--color-border)', fontSize: '14px', outline: 'none' }} 
+                />
+              </div>
+
               <hr style={{ border: 'none', borderTop: '1px solid var(--color-border)', margin: '15px 0' }} />
 
               <div style={{ padding: '20px', borderRadius: '12px', border: '1px solid var(--color-border)', backgroundColor: 'var(--color-background-soft, #f8fafc)' }}>
@@ -2304,6 +2370,12 @@ function App() {
                     <span style={{ fontWeight: 500, color: 'var(--color-text-muted)' }}>React / Vite / Electron / Go (Golang)</span>
                   </div>
                 </div>
+              </div>
+
+              <div className="danger-zone">
+                <h3 className="danger-zone-title">⚠️ Tehlikeli Bölge</h3>
+                <p className="danger-zone-desc">Uygulama ayarlarını ve öğretmen profil verilerini sıfırlayabilirsiniz. Bu işlem sizi Hoş Geldiniz ekranına geri döndürecektir.</p>
+                <button className="btn-danger" onClick={handleResetSystem}>Sistemi Sıfırla</button>
               </div>
             </div>
           </div>
@@ -2671,6 +2743,53 @@ function App() {
 
   return (
     <div className="layout">
+      {!isOnboarded && (
+        <div className="onboarding-wrapper">
+          <div className="onboarding-card">
+            <div className="onboarding-logo">🏫</div>
+            <h1 className="onboarding-title">PolyOS Lab'a Hoş Geldiniz</h1>
+            <p className="onboarding-subtitle">
+              Eğitim kurumları ve bilgisayar laboratuvarları için modern yönetim ekosistemi. Başlamak için lütfen bilgilerinizi girin.
+            </p>
+            
+            <form className="onboarding-form" onSubmit={(e) => {
+              e.preventDefault();
+              handleOnboardingSubmit(onboardName, onboardRole);
+            }}>
+              <div className="onboarding-group">
+                <label className="onboarding-label" htmlFor="teacher-name">Öğretmen Adı / Soyadı</label>
+                <input
+                  id="teacher-name"
+                  className="onboarding-input"
+                  type="text"
+                  value={onboardName}
+                  onChange={(e) => setOnboardName(e.target.value)}
+                  placeholder="Örn. Emirhan Gök"
+                  required
+                />
+              </div>
+              
+              <div className="onboarding-group">
+                <label className="onboarding-label" htmlFor="teacher-role">Görevi / Ünvanı</label>
+                <input
+                  id="teacher-role"
+                  className="onboarding-input"
+                  type="text"
+                  value={onboardRole}
+                  onChange={(e) => setOnboardRole(e.target.value)}
+                  placeholder="Örn. Sistem Yöneticisi veya Bilgisayar Öğretmeni"
+                  required
+                />
+              </div>
+              
+              <button className="onboarding-btn" type="submit">
+                Kurulumu Tamamla
+                <ChevronRight size={18} />
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
       {/* Sidebar */}
       <aside className={`sidebar ${sidebarOpen ? 'open' : 'closed'}`}>
         <div className="sidebar-logo">
@@ -2684,11 +2803,11 @@ function App() {
         </div>
 
         <div className="user-section">
-          <div className="avatar">E</div>
+          <div className="avatar">{teacherName ? teacherName.charAt(0).toUpperCase() : 'E'}</div>
           {sidebarOpen && (
             <div className="user-info">
-              <div className="user-name">Emirhan Gök</div>
-              <div className="user-role">Sistem Yöneticisi</div>
+              <div className="user-name">{teacherName}</div>
+              <div className="user-role">{teacherRole}</div>
             </div>
           )}
         </div>
