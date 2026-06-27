@@ -574,12 +574,12 @@ func captureScreen() []byte {
 	defer os.Remove(tmpFile)
 
 	qStr := strconv.Itoa(getScreenQuality())
-	cmd := exec.Command("scrot", "-z", "-q", qStr, tmpFile) // -z: sessiz mod, -q: kalite
+	cmd := runGUICommand("scrot", "-z", "-q", qStr, tmpFile) // -z: sessiz mod, -q: kalite
 
 	err := cmd.Run()
 	if err != nil {
 		// scrot yüklü değilse gnome-screenshot dene
-		cmd = exec.Command("gnome-screenshot", "-f", tmpFile)
+		cmd = runGUICommand("gnome-screenshot", "-f", tmpFile)
 		err = cmd.Run()
 	}
 
