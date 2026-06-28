@@ -29,7 +29,7 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-const clientVersion = "1.4.1"
+const clientVersion = "1.4.2"
 
 var (
 	captureInterval = 2000 * time.Millisecond
@@ -554,7 +554,7 @@ func drawMockScreen() []byte {
 		}
 	}
 
-	// Ortaya basit bir turkuaz kutu çizelim (PolyOS Lab logosu simülasyonu)
+	
 	fg := color.RGBA{13, 148, 136, 255}
 	for x := 350; x < 450; x++ {
 		for y := 250; y < 350; y++ {

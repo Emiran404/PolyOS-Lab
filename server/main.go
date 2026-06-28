@@ -251,6 +251,13 @@ var teacherConn *websocket.Conn
 var teacherMutex sync.Mutex
 
 func handleTeacherWS(w http.ResponseWriter, r *http.Request) {
+	token := r.URL.Query().Get("token")
+	if token != authToken {
+		log.Printf("[GÜVENLİK UYARISI] Geçersiz veya eksik token ile öğretmen ekran paylaşımı bağlantı denemesi reddedildi: IP=%s\n", r.RemoteAddr)
+		http.Error(w, "Unauthorized: Invalid token", http.StatusUnauthorized)
+		return
+	}
+
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Println("Teacher Upgrade error:", err)
@@ -298,6 +305,13 @@ var studentViewers = make(map[*websocket.Conn]bool)
 var viewersMutex sync.Mutex
 
 func handleStudentViewerWS(w http.ResponseWriter, r *http.Request) {
+	token := r.URL.Query().Get("token")
+	if token != authToken {
+		log.Printf("[GÜVENLİK UYARISI] Geçersiz veya eksik token ile öğrenci ekran izleme bağlantı denemesi reddedildi: IP=%s\n", r.RemoteAddr)
+		http.Error(w, "Unauthorized: Invalid token", http.StatusUnauthorized)
+		return
+	}
+
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Println("Student viewer upgrade error:", err)
@@ -350,6 +364,13 @@ func (w *wsLogWriter) Write(p []byte) (n int, err error) {
 }
 
 func handleLogsWS(w http.ResponseWriter, r *http.Request) {
+	token := r.URL.Query().Get("token")
+	if token != authToken {
+		log.Printf("[GÜVENLİK UYARISI] Geçersiz veya eksik token ile log izleyici bağlantı denemesi reddedildi: IP=%s\n", r.RemoteAddr)
+		http.Error(w, "Unauthorized: Invalid token", http.StatusUnauthorized)
+		return
+	}
+
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Println("Logs WS Upgrade error:", err)
@@ -383,6 +404,13 @@ func handleLogsWS(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleTerminalWS(w http.ResponseWriter, r *http.Request) {
+	token := r.URL.Query().Get("token")
+	if token != authToken {
+		log.Printf("[GÜVENLİK UYARISI] Geçersiz veya eksik token ile uzaktan terminal bağlantı denemesi reddedildi: IP=%s\n", r.RemoteAddr)
+		http.Error(w, "Unauthorized: Invalid token", http.StatusUnauthorized)
+		return
+	}
+
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Println("Terminal WS Upgrade error:", err)
@@ -408,6 +436,13 @@ func handleTerminalWS(w http.ResponseWriter, r *http.Request) {
 	}
 }
 func handleVNCProxyWS(w http.ResponseWriter, r *http.Request) {
+	token := r.URL.Query().Get("token")
+	if token != authToken {
+		log.Printf("[GÜVENLİK UYARISI] Geçersiz veya eksik token ile VNC proxy bağlantı denemesi reddedildi: IP=%s\n", r.RemoteAddr)
+		http.Error(w, "Unauthorized: Invalid token", http.StatusUnauthorized)
+		return
+	}
+
 	// Upgrade VNC client request to WebSocket
 	var vncUpgrader = websocket.Upgrader{
 		CheckOrigin: func(r *http.Request) bool { return true },
@@ -855,6 +890,53 @@ func handleCommand(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(`{"status":"ok"}`))
 }
 
+// Tüm aktif istemcilere komut gönderen (yayın/broadcast) REST API
+func handleBroadcast(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+	w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
+
+	if r.Method == "OPTIONS" {
+		return
+	}
+
+	if r.Method != "POST" {
+		http.Error(w, "Sadece POST metodu kabul edilir", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req struct {
+		Command string `json:"command"`
+	}
+
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		http.Error(w, "Geçersiz istek", http.StatusBadRequest)
+		return
+	}
+
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	cmdMsg := map[string]string{
+		"action": req.Command,
+	}
+
+	successCount := 0
+	for _, client := range clients {
+		err = client.Conn.WriteJSON(cmdMsg)
+		if err == nil {
+			successCount++
+		} else {
+			log.Printf("Yayın gönderme hatası [%s]: %v\n", client.Hostname, err)
+		}
+	}
+
+	log.Printf("Yayın komutu gönderildi: %s (Başarılı: %d/%d)\n", req.Command, successCount, len(clients))
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(fmt.Sprintf(`{"status":"ok","sent":%d}`, successCount)))
+}
+
 // Belirli bir istemcinin son ekran görüntüsünü döndüren REST API
 func getScreen(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -1247,6 +1329,7 @@ func main() {
 	http.HandleFunc("/api/telemetry", localOnly(handleTelemetryAPI))
 	http.HandleFunc("/api/clients", localOnly(getClients))
 	http.HandleFunc("/api/command", localOnly(handleCommand))
+	http.HandleFunc("/api/broadcast", localOnly(handleBroadcast))
 	http.HandleFunc("/api/screen", localOnly(getScreen))
 	http.HandleFunc("/api/upload", localOnly(handleUpload))
 	http.HandleFunc("/api/input", localOnly(handleInput))

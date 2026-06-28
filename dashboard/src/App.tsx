@@ -212,6 +212,14 @@ function App() {
     return localStorage.getItem('defaultStartTab') || 'summary';
   });
   const [logs, setLogs] = useState<string[]>([]);
+  const [activeToast, setActiveToast] = useState<string | null>(null);
+
+  const showDashboardNotification = (msg: string) => {
+    setActiveToast(msg);
+    setTimeout(() => {
+      setActiveToast(null);
+    }, 6000);
+  };
 
   const handleDefaultStartTabChange = (val: string) => {
     setDefaultStartTab(val);
@@ -278,7 +286,7 @@ function App() {
     let reconnectTimeout: any = null;
 
     const connectTerminal = () => {
-      ws = new WebSocket('ws://localhost:8080/ws/terminal');
+      ws = new WebSocket('ws://localhost:8080/ws/terminal?token=polyos-secure-token');
       
       ws.onmessage = (event) => {
         try {
@@ -313,16 +321,28 @@ function App() {
     let reconnectTimeout: any = null;
 
     const connectLogs = () => {
-      ws = new WebSocket('ws://localhost:8080/ws/logs');
+      ws = new WebSocket('ws://localhost:8080/ws/logs?token=polyos-secure-token');
       
       ws.onmessage = (event) => {
+        const rawLog = event.data;
         setLogs(prev => {
-          const newLogs = [...prev, `${new Date().toLocaleTimeString('tr-TR')} - ${event.data}`];
+          const newLogs = [...prev, `${new Date().toLocaleTimeString('tr-TR')} - ${rawLog}`];
           if (newLogs.length > 200) {
             return newLogs.slice(newLogs.length - 200);
           }
           return newLogs;
         });
+
+        // Parse broadcast logs to trigger dashboard notifications
+        if (rawLog.includes("Yayın komutu gönderildi: show_message:")) {
+          const parts = rawLog.split("show_message:");
+          if (parts.length > 1) {
+            const msg = parts[1].split(" (Başarılı")[0];
+            if (msg) {
+              showDashboardNotification(msg);
+            }
+          }
+        }
       };
 
       ws.onclose = () => {
@@ -881,7 +901,7 @@ function App() {
       
       setScreenShareStream(stream);
       
-      const ws = new WebSocket('ws://localhost:8080/ws/teacher');
+      const ws = new WebSocket('ws://localhost:8080/ws/teacher?token=polyos-secure-token');
       setTeacherWs(ws);
       
       ws.onopen = () => {
@@ -2100,7 +2120,7 @@ function App() {
                     >
                       {shareTechnology === 'set_tech_vnc' ? (
                         <VncViewer 
-                          url={`ws://localhost:8080/ws/vnc-proxy?clientId=${encodeURIComponent(client.id)}`}
+                          url={`ws://localhost:8080/ws/vnc-proxy?clientId=${encodeURIComponent(client.id)}&token=polyos-secure-token`}
                           viewOnly={true}
                           style={{ width: '100%', height: '100%' }}
                         />
@@ -2382,7 +2402,7 @@ function App() {
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(0,0,0,0.03)', paddingBottom: '6px' }}>
                     <span style={{ color: 'var(--color-text-secondary)' }}>Sürüm (Version):</span>
-                    <span style={{ fontWeight: 600, color: '#3b82f6' }}>v1.4.1</span>
+                    <span style={{ fontWeight: 600, color: '#3b82f6' }}>v1.4.2</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(0,0,0,0.03)', paddingBottom: '6px' }}>
                     <span style={{ color: 'var(--color-text-secondary)' }}>Geliştirici (Developer):</span>
@@ -3033,7 +3053,7 @@ function App() {
           }}>
             {shareTechnology === 'set_tech_vnc' ? (
               <VncViewer 
-                url={`ws://localhost:8080/ws/vnc-proxy?clientId=${encodeURIComponent(controlClient.id)}`}
+                url={`ws://localhost:8080/ws/vnc-proxy?clientId=${encodeURIComponent(controlClient.id)}&token=polyos-secure-token`}
                 viewOnly={false}
                 style={{
                   width: '100%',
@@ -3402,6 +3422,44 @@ function App() {
               />
             </form>
           </div>
+        </div>
+      )}
+      {activeToast && (
+        <div style={{
+          position: 'fixed',
+          top: '24px',
+          right: '24px',
+          backgroundColor: '#10b981',
+          color: '#fff',
+          padding: '16px 20px',
+          borderRadius: '12px',
+          boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.2), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
+          zIndex: 999999,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          minWidth: '320px',
+          boxSizing: 'border-box'
+        }}>
+          <div style={{ fontSize: '20px' }}>🔔</div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', opacity: 0.8, letterSpacing: '0.05em' }}>Yeni Sınav / Bildirim</div>
+            <div style={{ fontSize: '13px', fontWeight: 600, marginTop: '2px' }}>{activeToast}</div>
+          </div>
+          <button 
+            onClick={() => setActiveToast(null)} 
+            style={{
+              background: 'none',
+              border: 'none',
+              color: '#fff',
+              cursor: 'pointer',
+              fontSize: '14px',
+              opacity: 0.7,
+              padding: '4px'
+            }}
+          >
+            ✕
+          </button>
         </div>
       )}
     </div>

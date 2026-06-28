@@ -58,6 +58,15 @@ jobs:
             server/go.sum
             client/go.sum
 
+      - name: Run Go Vet & Test
+        run: |
+          cd server
+          go vet ./...
+          go test ./...
+          cd ../client
+          go vet ./...
+          go test ./...
+
       - name: Compile Go Binaries
         run: |
           cd server

@@ -13,7 +13,10 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/VERSIYON-1.4.1-blue?style=for-the-badge" alt="Versiyon">
+  <a href="https://github.com/Emiran404/PolyOS-Lab/actions/workflows/ci-cd.yml">
+    <img src="https://github.com/Emiran404/PolyOS-Lab/actions/workflows/ci-cd.yml/badge.svg" alt="PolyOS Lab CI/CD Build & Release">
+  </a>
+  <img src="https://img.shields.io/badge/VERSIYON-1.4.2-blue?style=for-the-badge" alt="Versiyon">
   <img src="https://img.shields.io/badge/LISANS-MIT-green?style=for-the-badge" alt="Lisans">
   <img src="https://img.shields.io/badge/PLATFORM-PARDUS-red?style=for-the-badge" alt="Platform">
 </p>
@@ -224,11 +227,26 @@ npm run electron:dev
 ```
 
 ### 3. İstemciyi (Öğrenci İstemcisi) Başlatın
+
+**Yöntem A: Tam Root Yetkileri ile Çalıştırma (Hızlı Geliştirme)**
 ```bash
 cd client
 # Giriş cihazlarını (xinput) ve USB erişimini (modprobe) yönetmek için root yetkisi gereklidir:
 sudo go run main.go
 ```
+
+**Yöntem B: Linux Capabilities ile Çalıştırma (Önerilen - Güvenli Üretim Ortamı)**
+Tam root yetkisi (`sudo`) vermek yerine, derlenmiş binary dosyasına sadece ihtiyaç duyduğu yetenekleri (Ağ yönetimi ve Sistem yönetimi yetkileri) atayarak çalıştırabilirsiniz:
+```bash
+cd client
+# Binary'yi derleyin
+go build -o polyos-client main.go
+# Gerekli capabilities atamalarını yapın
+sudo setcap cap_net_admin,cap_sys_admin+ep ./polyos-client
+# Root yetkisi olmadan sıradan kullanıcı olarak çalıştırın
+./polyos-client
+```
+Bu yöntem, olası bir güvenlik açığında saldırganın elde edebileceği hakları dramatik biçimde sınırlar.
 
 ---
 

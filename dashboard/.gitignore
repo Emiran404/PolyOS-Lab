@@ -22,3 +22,10 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Electron release folder
+release/
+release
+dist/
+dist-ssr/
+out/

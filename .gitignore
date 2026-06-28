@@ -56,3 +56,13 @@ teknofest_sunum_rehberi.md
 hatalar_ve_cozumleri.md
 *cozum*.md
 troubleshooting.md
+
+# Electron Release Outputs
+dashboard/release/
+
+# Client Binaries
+client/client_bin
+client/polyos-client
+
+# Internal CLI
+.antigravitycli/

@@ -1,3 +1,22 @@
+# PolyOS Lab v1.4.2 - Sürüm Açıklaması
+
+🎉 **PolyOS Lab v1.4.2**
+
+Bu sürüm; Atölye.Platform sınav entegrasyonu için merkezi yayın (broadcast) altyapısı ve öğretmen panelinde canlı masaüstü bildirim pencereleri ekler.
+
+---
+
+## 🚀 Yenilikler ve İyileştirmeler
+
+### 📡 Merkezi Yayın (Broadcast) API'si
+* **Yayın API Uç Noktası:** `/api/broadcast` REST API rotası sunucuya eklendi. Bu rota sayesinde tek bir HTTP isteğiyle bağlı olan tüm istemcilere (`polyos-client`) aynı anda bildirim/komut gönderilebilmesi sağlandı.
+
+### 🔔 Öğretmen Dashboard Canlı Bildirim Sistemi (Toast)
+* **Duyuru Yakalama:** Dashboard, log akışı üzerinden gelen yayın isteklerini anlık takip edecek şekilde güncellendi.
+* **Şık Toast Bildirimi:** Herhangi bir sınav veya genel bildirim yayınlandığında, öğretmen panelinin sağ üst köşesinde animasyonlu, yeşil renkli, zil ikonlu (🔔) modern bir bildirim penceresi gösterilmesi sağlandı.
+
+---
+
 # PolyOS Lab v1.4.1 - Sürüm Açıklaması
 
 🎉 **PolyOS Lab v1.4.1**
