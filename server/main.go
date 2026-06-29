@@ -72,10 +72,13 @@ func getDevicesFilePath() string {
 	home, err := os.UserHomeDir()
 	if err == nil {
 		dir := filepath.Join(home, ".config", "polyos-lab")
-		_ = os.MkdirAll(dir, 0755)
-		return filepath.Join(dir, "devices.json")
+		if errMkdir := os.MkdirAll(dir, 0755); errMkdir == nil {
+			return filepath.Join(dir, "devices.json")
+		}
 	}
-	return "devices.json"
+	dir := filepath.Join(os.TempDir(), "polyos-lab")
+	_ = os.MkdirAll(dir, 0755)
+	return filepath.Join(dir, "devices.json")
 }
 
 func loadDevices() map[string]*Device {
@@ -1335,7 +1338,12 @@ func handleUploadWallpaper(w http.ResponseWriter, r *http.Request) {
 	defer file.Close()
 
 	if _, err := os.Stat(uploadDir); os.IsNotExist(err) {
-		os.MkdirAll(uploadDir, 0755)
+		errMkdir := os.MkdirAll(uploadDir, 0755)
+		if errMkdir != nil {
+			log.Printf("Masaüstü dizin oluşturma hatası: %v (Yol: %s)\n", errMkdir, uploadDir)
+			http.Error(w, "Dizin oluşturulamadı: "+errMkdir.Error(), http.StatusInternalServerError)
+			return
+		}
 	}
 
 	ext := filepath.Ext(handler.Filename)
@@ -1344,7 +1352,8 @@ func handleUploadWallpaper(w http.ResponseWriter, r *http.Request) {
 
 	dst, err := os.Create(filePath)
 	if err != nil {
-		http.Error(w, "Dosya oluşturulamadı", http.StatusInternalServerError)
+		log.Printf("Masaüstü duvar kağıdı oluşturma hatası: %v (Yol: %s)\n", err, filePath)
+		http.Error(w, "Dosya oluşturulamadı: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 	defer dst.Close()
@@ -1448,7 +1457,11 @@ func main() {
 	} else {
 		uploadDir = filepath.Join(os.TempDir(), "polyos-uploads")
 	}
-	_ = os.MkdirAll(uploadDir, 0755)
+	if errMk := os.MkdirAll(uploadDir, 0755); errMk != nil {
+		// Fallback to temp dir if .config is not writable
+		uploadDir = filepath.Join(os.TempDir(), "polyos-uploads")
+		_ = os.MkdirAll(uploadDir, 0755)
+	}
 
 	log.SetOutput(&wsLogWriter{})
 	http.HandleFunc("/blocked", handleBlocked)
