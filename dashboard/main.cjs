@@ -62,6 +62,10 @@ function startGoServer(port = '8080') {
       console.log(`Go server process exited with code ${code}`);
       serverStatus = 'stopped';
       serverProcess = null;
+      const windows = BrowserWindow.getAllWindows();
+      if (windows.length > 0) {
+        windows[0].webContents.send('server-status', { status: 'stopped', port: serverPort });
+      }
     });
   } catch (err) {
     console.error('Failed to start Go server process:', err.message);
