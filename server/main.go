@@ -1489,7 +1489,15 @@ func main() {
 
 	// Yüklenen dosyaları statik olarak servis et
 	fs := http.FileServer(http.Dir(uploadDir))
-	http.Handle("/uploads/", http.StripPrefix("/uploads/", fs))
+	http.Handle("/uploads/", http.StripPrefix("/uploads/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+		if r.Method == "OPTIONS" {
+			return
+		}
+		fs.ServeHTTP(w, r)
+	})))
 
 	portFlag := flag.String("port", "8080", "Port to listen on")
 	tokenFlag := flag.String("token", "polyos-secure-token", "Authentication token for clients")
