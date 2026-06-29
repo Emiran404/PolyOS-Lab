@@ -18,6 +18,7 @@ import {
   Wifi,
   MonitorUp,
   HelpCircle,
+  Image,
   ChevronLeft,  
   Zap,
   Globe,
@@ -213,6 +214,10 @@ function App() {
   });
   const [logs, setLogs] = useState<string[]>([]);
   const [activeToast, setActiveToast] = useState<string | null>(null);
+
+  const [wallpaperLocked, setWallpaperLocked] = useState<boolean>(true);
+  const [wallpaperPath, setWallpaperPath] = useState<string>('');
+  const [isUploadingWallpaper, setIsUploadingWallpaper] = useState<boolean>(false);
 
   const showDashboardNotification = (msg: string) => {
     setActiveToast(msg);
@@ -855,6 +860,62 @@ function App() {
     }
   };
 
+  const fetchWallpaperState = async () => {
+    try {
+      const response = await fetch('http://localhost:8080/api/wallpaper');
+      const data = await response.json();
+      setWallpaperLocked(data.locked);
+      setWallpaperPath(data.wallpaper);
+    } catch (error) {
+      console.error("Failed to fetch wallpaper state:", error);
+    }
+  };
+
+  const handleWallpaperToggle = async (locked: boolean) => {
+    try {
+      const response = await fetch('http://localhost:8080/api/wallpaper/toggle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ locked }),
+      });
+      if (response.ok) {
+        setWallpaperLocked(locked);
+      } else {
+        alert("Duvar kağıdı kilit durumu güncellenemedi.");
+      }
+    } catch (error) {
+      console.error("Failed to toggle wallpaper lock:", error);
+    }
+  };
+
+  const handleWallpaperUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || !e.target.files[0]) return;
+    const file = e.target.files[0];
+    
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    setIsUploadingWallpaper(true);
+    try {
+      const response = await fetch('http://localhost:8080/api/wallpaper/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setWallpaperPath(data.wallpaper);
+        alert("Yeni duvar kağıdı yüklendi ve tüm istemcilere uygulandı.");
+      } else {
+        alert("Resim yüklenemedi.");
+      }
+    } catch (error) {
+      console.error("Failed to upload wallpaper:", error);
+      alert("Resim yüklenirken bir hata oluştu.");
+    } finally {
+      setIsUploadingWallpaper(false);
+    }
+  };
+
   // İstemcileri her 2 saniyede bir çek
   useEffect(() => {
     const fetchClients = async () => {
@@ -870,6 +931,11 @@ function App() {
     fetchClients();
     const interval = setInterval(fetchClients, 2000);
     return () => clearInterval(interval);
+  }, []);
+
+  // Sunucu ilk açıldığında duvar kağıdı kilit durumunu çek
+  useEffect(() => {
+    fetchWallpaperState();
   }, []);
 
   // Cihazları (PolyOS Wake) çek
@@ -1116,6 +1182,7 @@ function App() {
     { icon: FolderOpen, label: 'Dosya Transferi', id: 'files' },
     { icon: Power, label: 'PolyOS Wake', id: 'polyos_wake' },
     { icon: Terminal, label: 'Sistem Logları', id: 'logs' },
+    { icon: Image, label: 'Duvar Kağıdı Kilidi', id: 'wallpaper' },
     { icon: Settings, label: 'Ayarlar', id: 'settings' },
   ];
 
@@ -2260,6 +2327,93 @@ function App() {
             </div>
           </div>
         );
+      case 'wallpaper':
+        return (
+          <div className="card">
+            <div className="card-header">
+              <h2 className="card-title">Masaüstü Duvar Kağıdı Kilidi</h2>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', marginTop: '20px', maxWidth: '600px' }}>
+              <div style={{ padding: '20px', borderRadius: '12px', border: '1px solid var(--color-border)', backgroundColor: 'var(--color-background)', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div>
+                    <span style={{ fontWeight: 600, display: 'block', fontSize: '16px' }}>Duvar Kağıdını Kilitle</span>
+                    <span style={{ fontSize: '13px', color: 'var(--color-text-muted)' }}>Öğrencilerin duvar kağıdını değiştirmesini engeller (Varsayılan olarak aktiftir)</span>
+                  </div>
+                  <label className="switch" style={{ position: 'relative', display: 'inline-block', width: '50px', height: '26px' }}>
+                    <input 
+                      type="checkbox" 
+                      checked={wallpaperLocked}
+                      onChange={(e) => handleWallpaperToggle(e.target.checked)}
+                      style={{ opacity: 0, width: 0, height: 0 }}
+                    />
+                    <span style={{
+                      position: 'absolute',
+                      cursor: 'pointer',
+                      top: 0, left: 0, right: 0, bottom: 0,
+                      backgroundColor: wallpaperLocked ? '#10b981' : '#64748b',
+                      transition: '.3s',
+                      borderRadius: '24px'
+                    }}>
+                      <span style={{
+                        position: 'absolute',
+                        content: '""',
+                        height: '20px', width: '20px',
+                        left: wallpaperLocked ? '26px' : '4px',
+                        bottom: '3px',
+                        backgroundColor: 'white',
+                        transition: '.3s',
+                        borderRadius: '50%'
+                      }} />
+                    </span>
+                  </label>
+                </div>
+
+                <hr style={{ border: 'none', borderTop: '1px solid var(--color-border)' }} />
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <label style={{ fontWeight: 600, fontSize: '15px' }}>Tüm Bilgisayarlar İçin Masaüstü Görseli Yükle</label>
+                  <p style={{ fontSize: '13px', color: 'var(--color-text-muted)', margin: 0 }}>
+                    Seçeceğiniz resim dosyası sunucuya yüklenecek, tüm öğrenci bilgisayarlarına gönderilecek ve masaüstü resmi olarak ayarlanıp kilitlenecektir.
+                  </p>
+                  
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '8px' }}>
+                    <input 
+                      type="file" 
+                      accept="image/*"
+                      id="wallpaper-upload-input"
+                      onChange={handleWallpaperUpload}
+                      disabled={isUploadingWallpaper}
+                      style={{ display: 'none' }}
+                    />
+                    <button 
+                      className="btn-primary" 
+                      onClick={() => document.getElementById('wallpaper-upload-input')?.click()}
+                      disabled={isUploadingWallpaper}
+                      style={{ backgroundColor: '#3b82f6' }}
+                    >
+                      {isUploadingWallpaper ? 'Görsel Yükleniyor...' : 'Görsel Seç ve Yükle'}
+                    </button>
+                    {isUploadingWallpaper && <span style={{ fontSize: '13px', color: '#3b82f6' }}>Yükleniyor...</span>}
+                  </div>
+
+                  {wallpaperPath && (
+                    <div style={{ marginTop: '16px', padding: '12px', borderRadius: '8px', border: '1px solid var(--color-border)', backgroundColor: 'rgba(0,0,0,0.02)' }}>
+                      <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text-secondary)', display: 'block', marginBottom: '8px' }}>Aktif Kilitli Duvar Kağıdı Önizlemesi:</span>
+                      <img 
+                        src={`http://localhost:8080${wallpaperPath}`} 
+                        alt="Kilitli Duvar Kağıdı" 
+                        style={{ width: '100%', maxHeight: '200px', objectFit: 'contain', borderRadius: '8px', border: '1px solid var(--color-border)', backgroundColor: '#000' }}
+                      />
+                    </div>
+                  )}
+                </div>
+
+              </div>
+            </div>
+          </div>
+        );
       case 'settings':
         return (
           <div className="card">
@@ -2359,8 +2513,70 @@ function App() {
                   <option value="files">Dosya Transferi</option>
                   <option value="polyos_wake">PolyOS Wake</option>
                   <option value="logs">Sistem Logları</option>
+                  <option value="wallpaper">Duvar Kağıdı Kilidi</option>
                   <option value="settings">Ayarlar</option>
                 </select>
+              </div>
+
+              <hr style={{ border: 'none', borderTop: '1px solid var(--color-border)', margin: '10px 0' }} />
+
+              <div style={{ padding: '16px', borderRadius: '12px', border: '1px solid var(--color-border)', backgroundColor: 'var(--color-background)', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div>
+                    <span style={{ fontWeight: 600, display: 'block' }}>Masaüstü Duvar Kağıdı Kilidi</span>
+                    <span style={{ fontSize: '13px', color: 'var(--color-text-muted)' }}>Öğrencilerin duvar kağıdını değiştirmesini engeller</span>
+                  </div>
+                  <label className="switch" style={{ position: 'relative', display: 'inline-block', width: '46px', height: '24px' }}>
+                    <input 
+                      type="checkbox" 
+                      checked={wallpaperLocked}
+                      onChange={(e) => handleWallpaperToggle(e.target.checked)}
+                      style={{ opacity: 0, width: 0, height: 0 }}
+                    />
+                    <span style={{
+                      position: 'absolute',
+                      cursor: 'pointer',
+                      top: 0, left: 0, right: 0, bottom: 0,
+                      backgroundColor: wallpaperLocked ? '#3b82f6' : '#ccc',
+                      transition: '.3s',
+                      borderRadius: '24px'
+                    }}>
+                      <span style={{
+                        position: 'absolute',
+                        content: '""',
+                        height: '18px', width: '18px',
+                        left: wallpaperLocked ? '24px' : '4px',
+                        bottom: '3px',
+                        backgroundColor: 'white',
+                        transition: '.3s',
+                        borderRadius: '50%'
+                      }} />
+                    </span>
+                  </label>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <label style={{ fontWeight: 600, fontSize: '14px' }}>Duvar Kağıdı Resmi Yükle</label>
+                  <input 
+                    type="file" 
+                    accept="image/*"
+                    onChange={handleWallpaperUpload}
+                    disabled={isUploadingWallpaper}
+                    style={{ fontSize: '13px' }}
+                  />
+                  {isUploadingWallpaper && <span style={{ fontSize: '12px', color: '#3b82f6' }}>Resim yükleniyor ve kilitleniyor...</span>}
+                  
+                  {wallpaperPath && (
+                    <div style={{ marginTop: '8px' }}>
+                      <span style={{ fontSize: '12px', color: 'var(--color-text-muted)', display: 'block', marginBottom: '4px' }}>Aktif Kilitli Resim Önizlemesi:</span>
+                      <img 
+                        src={`http://localhost:8080${wallpaperPath}`} 
+                        alt="Kilitli Duvar Kağıdı" 
+                        style={{ width: '120px', height: '75px', objectFit: 'cover', borderRadius: '6px', border: '1px solid var(--color-border)' }}
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
 
               <hr style={{ border: 'none', borderTop: '1px solid var(--color-border)', margin: '10px 0' }} />
@@ -2402,7 +2618,7 @@ function App() {
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(0,0,0,0.03)', paddingBottom: '6px' }}>
                     <span style={{ color: 'var(--color-text-secondary)' }}>Sürüm (Version):</span>
-                    <span style={{ fontWeight: 600, color: '#3b82f6' }}>v1.4.2</span>
+                    <span style={{ fontWeight: 600, color: '#3b82f6' }}>v1.4.3</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(0,0,0,0.03)', paddingBottom: '6px' }}>
                     <span style={{ color: 'var(--color-text-secondary)' }}>Geliştirici (Developer):</span>

@@ -1,3 +1,21 @@
+# PolyOS Lab v1.4.3 - Sürüm Açıklaması
+
+🎉 **PolyOS Lab v1.4.3**
+
+Bu sürüm; laboratuvar ortamında tam kontrol sağlamak adına öğretmen panelinden öğrenci bilgisayarlarının masaüstü arka planını (duvar kağıdı) kilitleme ve sunucudan toplu duvar kağıdı görseli yansıtma özelliklerini ekler.
+
+---
+
+## 🚀 Yenilikler ve İyileştirmeler
+
+### 🖼️ Masaüstü Duvar Kağıdı Kilitleme & Yönetimi (Wallpaper Lock)
+* **Dedicated Dashboard Sayfası:** Öğretmen panelinin sol menüsüne özel bir "Duvar Kağıdı Kilidi" sekmesi eklendi. Buradan kilit durumu açılıp kapatılabilir ve görsel önizlemesi izlenebilir.
+* **Görsel Yükleme & Dağıtma:** Öğretmen panelinden yüklenen duvar kağıdı görseli anlık olarak sunucuya kaydedilir, tüm aktif istemcilere WebSocket üzerinden yansıtılır.
+* **Aktif Koruma (Enforcer Loop):** Öğrenci bilgisayarlarında çalışan arka plan servisi (goroutine), duvar kağıdının değiştirilmesini engellemek için 4 saniyede bir kontrol yapar ve elle yapılan değişiklikleri otomatik olarak sıfırlayıp kilitli resmi tekrar uygular.
+* **Masaüstü Ortamı Desteği:** XFCE (`xfconf-query`) ve GNOME (`gsettings`) masaüstü ortamlarıyla tam uyumluluk sağlandı.
+
+---
+
 # PolyOS Lab v1.4.2 - Sürüm Açıklaması
 
 🎉 **PolyOS Lab v1.4.2**

@@ -29,7 +29,7 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-const clientVersion = "1.4.2"
+const clientVersion = "1.4.3"
 
 var (
 	captureInterval = 2000 * time.Millisecond
@@ -48,6 +48,9 @@ var (
 	lockMutex       sync.Mutex
 	shareTechnology = "vnc" // "native_python", "browser" veya "vnc"
 	shareTechMutex  sync.RWMutex
+	wallpaperLocked = true
+	lockedWallpaperPath = ""
+	wallpaperStateMutex sync.Mutex
 )
 
 func safeWriteJSON(data interface{}) error {
@@ -1648,6 +1651,9 @@ func main() {
 	// Konfigürasyonu yükle
 	loadConfig()
 
+	// Duvar kağıdı kilit izleyicisini başlat
+	startWallpaperLockMonitor()
+
 	shareTechMutex.RLock()
 	initTech := shareTechnology
 	shareTechMutex.RUnlock()
@@ -1740,6 +1746,10 @@ func main() {
 						url, _ := cmdData["url"].(string)
 						filename, _ := cmdData["filename"].(string)
 						handleFileTransfer(url, filename)
+					} else if action == "wallpaper_lock" {
+						locked, _ := cmdData["locked"].(bool)
+						url, _ := cmdData["url"].(string)
+						go handleWallpaperLockCmd(locked, url)
 					} else if event != "" {
 						handleInputEvent(event, cmdData)
 					} else if strings.HasPrefix(action, "quality_") {
@@ -2054,4 +2064,114 @@ func flushDNSCache() {
 	_ = exec.Command("systemd-resolve", "--flush-caches").Run()
 	_ = exec.Command("systemctl", "restart", "systemd-resolved").Run()
 	_ = exec.Command("nscd", "-i", "hosts").Run()
+}
+
+func getLocalWallpaperPath() string {
+	_ = os.MkdirAll("/etc/polyos", 0755)
+	testFile := "/etc/polyos/test_write"
+	if err := os.WriteFile(testFile, []byte("test"), 0644); err == nil {
+		_ = os.Remove(testFile)
+		return "/etc/polyos/locked-wallpaper.jpg"
+	}
+
+	home, err := os.UserHomeDir()
+	if err == nil {
+		dir := filepath.Join(home, ".config", "polyos-lab")
+		_ = os.MkdirAll(dir, 0755)
+		return filepath.Join(dir, "locked-wallpaper.jpg")
+	}
+
+	return filepath.Join(os.TempDir(), "locked-wallpaper.jpg")
+}
+
+func setWallpaperLinux(path string) {
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		return
+	}
+
+	cmd1 := runGUICommand("gsettings", "set", "org.gnome.desktop.background", "picture-uri", "file://"+path)
+	_ = cmd1.Run()
+	cmd2 := runGUICommand("gsettings", "set", "org.gnome.desktop.background", "picture-uri-dark", "file://"+path)
+	_ = cmd2.Run()
+
+	listCmd := runGUICommand("xfconf-query", "-c", "xfce4-desktop", "-p", "/backdrop", "-l")
+	out, err := listCmd.Output()
+	if err == nil {
+		lines := strings.Split(string(out), "\n")
+		for _, line := range lines {
+			line = strings.TrimSpace(line)
+			if strings.HasSuffix(line, "last-image") || strings.HasSuffix(line, "image-path") {
+				setCmd := runGUICommand("xfconf-query", "-c", "xfce4-desktop", "-p", line, "-s", path)
+				_ = setCmd.Run()
+			}
+		}
+	} else {
+		setCmd := runGUICommand("xfconf-query", "-c", "xfce4-desktop", "-p", "/backdrop/screen0/monitor0/workspace0/last-image", "-s", path)
+		_ = setCmd.Run()
+	}
+}
+
+func startWallpaperLockMonitor() {
+	go func() {
+		for {
+			time.Sleep(4 * time.Second)
+
+			wallpaperStateMutex.Lock()
+			locked := wallpaperLocked
+			wallpaperStateMutex.Unlock()
+
+			if !locked {
+				continue
+			}
+
+			path := getLocalWallpaperPath()
+			if _, err := os.Stat(path); err == nil {
+				setWallpaperLinux(path)
+			}
+		}
+	}()
+}
+
+func handleWallpaperLockCmd(locked bool, relativeURL string) {
+	wallpaperStateMutex.Lock()
+	wallpaperLocked = locked
+	wallpaperStateMutex.Unlock()
+
+	if !locked {
+		log.Println("Masaüstü duvar kağıdı kilidi kaldırıldı.")
+		return
+	}
+
+	if relativeURL == "" {
+		log.Println("Masaüstü duvar kağıdı kilidi aktif (varsayılan resim).")
+		return
+	}
+
+	serverBase := getServerHTTPURL()
+	absoluteURL := serverBase + relativeURL
+	log.Printf("Duvar kağıdı indirme isteği: %s\n", absoluteURL)
+
+	resp, err := http.Get(absoluteURL)
+	if err != nil {
+		log.Println("Duvar kağıdı indirilemedi:", err)
+		return
+	}
+	defer resp.Body.Close()
+
+	localPath := getLocalWallpaperPath()
+	out, err := os.Create(localPath)
+	if err != nil {
+		log.Println("Duvar kağıdı dosyası oluşturulamadı:", err)
+		return
+	}
+	defer out.Close()
+
+	_, err = io.Copy(out, resp.Body)
+	if err != nil {
+		log.Println("Duvar kağıdı kaydedilemedi:", err)
+		return
+	}
+
+	log.Printf("Duvar kağıdı indirildi ve kaydedildi: %s\n", localPath)
+	setWallpaperLinux(localPath)
 }

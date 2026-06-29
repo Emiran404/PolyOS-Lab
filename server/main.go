@@ -26,6 +26,10 @@ var upgrader = websocket.Upgrader{
 
 var authToken = "polyos-secure-token"
 
+var wallpaperLocked = true
+var currentWallpaper = "" // e.g. "/uploads/locked-wallpaper.jpg"
+var wallpaperMutex sync.Mutex
+
 var logClients = make(map[*websocket.Conn]bool)
 var logMutex sync.Mutex
 
@@ -182,6 +186,16 @@ func handleWS(w http.ResponseWriter, r *http.Request) {
 	saveDevice(handshake.MAC, handshake.Hostname, r.RemoteAddr)
 
 	log.Printf("Client bağlandı: %s (%s)\n", client.Hostname, client.ID)
+
+	// Send initial wallpaper lock configuration
+	wallpaperMutex.Lock()
+	initialMsg := map[string]interface{}{
+		"action": "wallpaper_lock",
+		"locked": wallpaperLocked,
+		"url":    currentWallpaper,
+	}
+	wallpaperMutex.Unlock()
+	_ = client.Conn.WriteJSON(initialMsg)
 
 	// Bağlantıyı açık tut ve mesajları dinle
 	for {
@@ -1235,6 +1249,126 @@ func handleBlocked(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(html))
 }
 
+func broadcastWallpaperState() {
+	wallpaperMutex.Lock()
+	msg := map[string]interface{}{
+		"action": "wallpaper_lock",
+		"locked": wallpaperLocked,
+		"url":    currentWallpaper,
+	}
+	wallpaperMutex.Unlock()
+
+	mutex.Lock()
+	defer mutex.Unlock()
+	for _, client := range clients {
+		_ = client.Conn.WriteJSON(msg)
+	}
+}
+
+func handleGetWallpaper(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Content-Type", "application/json")
+	wallpaperMutex.Lock()
+	defer wallpaperMutex.Unlock()
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"locked":    wallpaperLocked,
+		"wallpaper": currentWallpaper,
+	})
+}
+
+func handleToggleWallpaper(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+	w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
+
+	if r.Method == "OPTIONS" {
+		return
+	}
+	if r.Method != "POST" {
+		http.Error(w, "Sadece POST metodu kabul edilir", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req struct {
+		Locked bool `json:"locked"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Geçersiz istek", http.StatusBadRequest)
+		return
+	}
+
+	wallpaperMutex.Lock()
+	wallpaperLocked = req.Locked
+	wallpaperMutex.Unlock()
+
+	broadcastWallpaperState()
+
+	log.Printf("Masaüstü resim kilidi güncellendi: %t\n", req.Locked)
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(`{"status":"ok"}`))
+}
+
+func handleUploadWallpaper(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+	w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
+
+	if r.Method == "OPTIONS" {
+		return
+	}
+	if r.Method != "POST" {
+		http.Error(w, "Sadece POST metodu kabul edilir", http.StatusMethodNotAllowed)
+		return
+	}
+
+	err := r.ParseMultipartForm(100 << 20)
+	if err != nil {
+		http.Error(w, "Dosya boyutu çok büyük", http.StatusBadRequest)
+		return
+	}
+
+	file, handler, err := r.FormFile("file")
+	if err != nil {
+		http.Error(w, "Dosya alınamadı", http.StatusBadRequest)
+		return
+	}
+	defer file.Close()
+
+	if _, err := os.Stat(uploadDir); os.IsNotExist(err) {
+		os.MkdirAll(uploadDir, 0755)
+	}
+
+	ext := filepath.Ext(handler.Filename)
+	safeFilename := "locked-wallpaper" + ext
+	filePath := filepath.Join(uploadDir, safeFilename)
+
+	dst, err := os.Create(filePath)
+	if err != nil {
+		http.Error(w, "Dosya oluşturulamadı", http.StatusInternalServerError)
+		return
+	}
+	defer dst.Close()
+
+	_, err = io.Copy(dst, file)
+	if err != nil {
+		http.Error(w, "Dosya kaydedilemedi", http.StatusInternalServerError)
+		return
+	}
+
+	wallpaperMutex.Lock()
+	currentWallpaper = "/uploads/" + safeFilename
+	wallpaperMutex.Unlock()
+
+	broadcastWallpaperState()
+
+	log.Printf("Yeni duvar kağıdı yüklendi: %s\n", safeFilename)
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"status":    "ok",
+		"wallpaper": currentWallpaper,
+	})
+}
+
 func localOnly(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ip, _, err := net.SplitHostPort(r.RemoteAddr)
@@ -1336,6 +1470,9 @@ func main() {
 	http.HandleFunc("/api/devices", localOnly(handleDevices))
 	http.HandleFunc("/api/wake", localOnly(handleWake))
 	http.HandleFunc("/api/devices/delete", localOnly(handleDeleteDevice))
+	http.HandleFunc("/api/wallpaper", localOnly(handleGetWallpaper))
+	http.HandleFunc("/api/wallpaper/toggle", localOnly(handleToggleWallpaper))
+	http.HandleFunc("/api/wallpaper/upload", localOnly(handleUploadWallpaper))
 
 	// Yüklenen dosyaları statik olarak servis et
 	fs := http.FileServer(http.Dir(uploadDir))

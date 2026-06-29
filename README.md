@@ -16,7 +16,7 @@
   <a href="https://github.com/Emiran404/PolyOS-Lab/actions/workflows/ci-cd.yml">
     <img src="https://github.com/Emiran404/PolyOS-Lab/actions/workflows/ci-cd.yml/badge.svg" alt="PolyOS Lab CI/CD Build & Release">
   </a>
-  <img src="https://img.shields.io/badge/VERSIYON-1.4.2-blue?style=for-the-badge" alt="Versiyon">
+  <img src="https://img.shields.io/badge/VERSIYON-1.4.3-blue?style=for-the-badge" alt="Versiyon">
   <img src="https://img.shields.io/badge/LISANS-MIT-green?style=for-the-badge" alt="Lisans">
   <img src="https://img.shields.io/badge/PLATFORM-PARDUS-red?style=for-the-badge" alt="Platform">
 </p>
@@ -128,6 +128,7 @@ Geleneksel hantal yönetim yazılımlarının aksine, Go dilinin sunduğu yerel 
 
 ### 🔒 Güvenlik ve Odak Modu
 * **Girdileri Kapat & Kilitle**: Tek tıkla tüm klavye/fare girdilerini `xinput` seviyesinde kapatır ve aşılması imkansız, tam ekran bir *"Bu Bilgisayar Kilitlendi"* uyarısı açar.
+* **Masaüstü Duvar Kağıdı Kilidi**: Öğrencilerin masaüstü arka plan resmini değiştirmesini engeller. Öğretmen, panelden istediği bir görseli yükleyerek tüm istemcilere uygulayabilir ve kilit altında tutabilir.
 * **USB Depolama Engelleme**: İstemci cihazlarında `usb-storage` ve `uas` çekirdek (kernel) modüllerini kara listeye alarak USB belleklerin bağlanmasını engeller.
 * **İnternet ve Web Filtresi**:
   - Tüm laboratuvarın internetini tek tıkla ağ seviyesinde kesip açabilir.
