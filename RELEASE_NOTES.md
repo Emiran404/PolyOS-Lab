@@ -1,3 +1,18 @@
+# PolyOS Lab v1.5.2 - Sürüm Açıklaması
+
+🎉 **PolyOS Lab v1.5.2**
+
+Bu sürüm; Go sunucu bağlantı noktası çakışmalarını (address already in use) ve arayüzde sunucunun "Pasif" durumda kalması sorununu giderir.
+
+---
+
+## 🚀 Yenilikler ve İyileştirmeler
+
+### 🔌 Go Sunucu Port Çakışma Düzeltmesi
+- **Otomatik Port Temizliği (Kill Port on Startup):** Electron uygulaması başlatılırken veya sunucu yeniden başlatılırken, hedef portta (örn. 8080) kalmış olan yetim (orphaned) eski Go sunucu süreçleri algılanır ve otomatik olarak temizlenir. Bu sayede `bind: address already in use` hatası ve sunucunun "Pasif" durumda kilitlenmesi engellenir.
+
+---
+
 # PolyOS Lab v1.5.1 - Sürüm Açıklaması
 
 🎉 **PolyOS Lab v1.5.1**

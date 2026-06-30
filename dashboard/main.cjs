@@ -20,10 +20,25 @@ function buildGoServer() {
   }
 }
 
+function killProcessOnPort(port) {
+  try {
+    if (process.platform === 'win32') {
+      execSync(`for /f "tokens=5" %a in ('netstat -aon ^| findstr "${port}"') do taskkill /f /pid %a`, { stdio: 'ignore' });
+    } else {
+      execSync(`lsof -t -i:${port} | xargs kill -9`, { stdio: 'ignore' });
+    }
+    console.log(`Cleared port ${port}`);
+  } catch (err) {
+    // Port boş veya komut başarısız olduysa yoksay
+  }
+}
+
 function startGoServer(port = '8080') {
   if (serverProcess) {
     stopGoServer();
   }
+  
+  killProcessOnPort(port);
   
   serverPort = port;
   let binPath;
