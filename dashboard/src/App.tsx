@@ -219,8 +219,19 @@ function App() {
   const [wallpaperPath, setWallpaperPath] = useState<string>('');
   const [isUploadingWallpaper, setIsUploadingWallpaper] = useState<boolean>(false);
 
+  const [clientCardSize, setClientCardSize] = useState<number>(() => {
+    return Number(localStorage.getItem('polyos_client_card_size')) || 220;
+  });
+
+  const handleCardSizeChange = (size: number) => {
+    setClientCardSize(size);
+    localStorage.setItem('polyos_client_card_size', String(size));
+  };
+
+  const [toastTitle, setToastTitle] = useState<string>('Sistem Bildirimi');
   const toastTimeoutRef = useRef<any>(null);
-  const showDashboardNotification = (msg: string) => {
+  const showDashboardNotification = (msg: string, title: string = 'Sistem Bildirimi') => {
+    setToastTitle(title);
     setActiveToast(msg);
     if (toastTimeoutRef.current) {
       clearTimeout(toastTimeoutRef.current);
@@ -349,7 +360,7 @@ function App() {
           if (parts.length > 1) {
             const msg = parts[1].split(" (Başarılı")[0];
             if (msg) {
-              showDashboardNotification(msg);
+              showDashboardNotification(msg, "Sınav Bildirimi");
             }
           }
         }
@@ -927,7 +938,7 @@ function App() {
       try {
         const response = await fetch('http://localhost:8080/api/clients');
         const data = await response.json();
-        setClients(data);
+        setClients(data || []);
       } catch (error) {
         console.error("Failed to fetch clients:", error);
       }
@@ -1662,15 +1673,65 @@ function App() {
                 </button>
               </div>
 
-              <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text-secondary)' }}>
-                Seçili: {selectedClientIds.length} / {clients.length} İstemci
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: 'var(--color-background)', padding: '4px 8px', borderRadius: '8px', border: '1px solid var(--color-border)' }}>
+                  <span style={{ fontSize: '12px', color: 'var(--color-text-secondary)', fontWeight: 600 }}>Ekran Boyutu:</span>
+                  <button 
+                    onClick={() => handleCardSizeChange(160)}
+                    style={{ 
+                      padding: '3px 8px', 
+                      fontSize: '11px', 
+                      borderRadius: '4px', 
+                      border: 'none', 
+                      cursor: 'pointer',
+                      fontWeight: 600,
+                      backgroundColor: clientCardSize === 160 ? 'var(--primary)' : 'transparent',
+                      color: clientCardSize === 160 ? '#fff' : 'var(--color-text)'
+                    }}
+                  >
+                    Küçük
+                  </button>
+                  <button 
+                    onClick={() => handleCardSizeChange(220)}
+                    style={{ 
+                      padding: '3px 8px', 
+                      fontSize: '11px', 
+                      borderRadius: '4px', 
+                      border: 'none', 
+                      cursor: 'pointer',
+                      fontWeight: 600,
+                      backgroundColor: clientCardSize === 220 ? 'var(--primary)' : 'transparent',
+                      color: clientCardSize === 220 ? '#fff' : 'var(--color-text)'
+                    }}
+                  >
+                    Orta
+                  </button>
+                  <button 
+                    onClick={() => handleCardSizeChange(300)}
+                    style={{ 
+                      padding: '3px 8px', 
+                      fontSize: '11px', 
+                      borderRadius: '4px', 
+                      border: 'none', 
+                      cursor: 'pointer',
+                      fontWeight: 600,
+                      backgroundColor: clientCardSize === 300 ? 'var(--primary)' : 'transparent',
+                      color: clientCardSize === 300 ? '#fff' : 'var(--color-text)'
+                    }}
+                  >
+                    Büyük
+                  </button>
+                </div>
+                <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text-secondary)' }}>
+                  Seçili: {selectedClientIds.length} / {clients.length} İstemci
+                </div>
               </div>
             </div>
 
             {/* Clients grid with live screen preview and selection checkbox */}
             <div style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
+              gridTemplateColumns: `repeat(auto-fill, minmax(${clientCardSize}px, 1fr))`,
               gap: '16px',
               padding: '8px 0'
             }}>
@@ -2628,7 +2689,7 @@ function App() {
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(0,0,0,0.03)', paddingBottom: '6px' }}>
                     <span style={{ color: 'var(--color-text-secondary)' }}>Sürüm (Version):</span>
-                    <span style={{ fontWeight: 600, color: '#3b82f6' }}>v1.4.5</span>
+                    <span style={{ fontWeight: 600, color: '#3b82f6' }}>v1.4.7</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(0,0,0,0.03)', paddingBottom: '6px' }}>
                     <span style={{ color: 'var(--color-text-secondary)' }}>Geliştirici (Developer):</span>
@@ -3421,26 +3482,23 @@ function App() {
           }}>
             <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: '#0f172a' }}>Öğrencilere Mesaj Gönder</h3>
             <p style={{ margin: 0, fontSize: '13px', color: '#64748b' }}>Seçili öğrencilerin ekranlarında gösterilecek olan mesajı yazın:</p>
-            <textarea 
+            <input 
+              type="text"
               placeholder="Ders başladı, lütfen tarayıcılarınızı kapatın..." 
               value={messageText}
               onChange={(e) => setMessageText(e.target.value)}
               style={{
                 width: '100%',
-                height: '100px',
                 padding: '12px',
                 borderRadius: '8px',
                 border: '1px solid var(--color-border)',
                 fontSize: '14px',
                 outline: 'none',
-                resize: 'none',
-                fontFamily: 'inherit',
                 boxSizing: 'border-box'
               }}
               autoFocus
               onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
+                if (e.key === 'Enter') {
                   handleSendMessageSubmit(messageText);
                   setMessageModalOpen(false);
                   setMessageText('');
@@ -3669,7 +3727,7 @@ function App() {
         }}>
           <div style={{ fontSize: '20px' }}>🔔</div>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', opacity: 0.8, letterSpacing: '0.05em' }}>Yeni Sınav / Bildirim</div>
+            <div style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', opacity: 0.8, letterSpacing: '0.05em' }}>{toastTitle}</div>
             <div style={{ fontSize: '13px', fontWeight: 600, marginTop: '2px' }}>{activeToast}</div>
           </div>
           <button 

@@ -850,7 +850,7 @@ func getClients(w http.ResponseWriter, r *http.Request) {
 		Version  string `json:"version"`
 	}
 	
-	var list []ClientInfo
+	list := []ClientInfo{}
 	for id, c := range clients {
 		list = append(list, ClientInfo{
 			ID:       id,

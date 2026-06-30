@@ -29,7 +29,7 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-const clientVersion = "1.4.5"
+const clientVersion = "1.4.7"
 
 var (
 	captureInterval = 2000 * time.Millisecond
@@ -1039,7 +1039,6 @@ func stopLockOverlay() {
 
 	if lockOverlayCmd != nil {
 		_ = lockOverlayCmd.Process.Kill()
-		_ = lockOverlayCmd.Wait()
 		lockOverlayCmd = nil
 	}
 	killProcessByName("firefox")
@@ -2089,13 +2088,25 @@ func setWallpaperLinux(path string) {
 		return
 	}
 
-	// GNOME Ayarları
-	cmd1 := runGUICommand("gsettings", "set", "org.gnome.desktop.background", "picture-uri", "file://"+path)
-	_ = cmd1.Run()
-	cmd2 := runGUICommand("gsettings", "set", "org.gnome.desktop.background", "picture-uri-dark", "file://"+path)
-	_ = cmd2.Run()
-	cmd3 := runGUICommand("gsettings", "set", "org.gnome.desktop.background", "picture-options", "zoom")
-	_ = cmd3.Run()
+	// GNOME Ayarları (Sadece gerekirse güncelle)
+	needsGnomeUpdate := true
+	if getCmd := runGUICommand("gsettings", "get", "org.gnome.desktop.background", "picture-uri"); getCmd != nil {
+		if out, err := getCmd.Output(); err == nil {
+			currVal := strings.TrimSpace(string(out))
+			currVal = strings.Trim(currVal, "'\"")
+			if currVal == "file://"+path {
+				needsGnomeUpdate = false
+			}
+		}
+	}
+	if needsGnomeUpdate {
+		cmd1 := runGUICommand("gsettings", "set", "org.gnome.desktop.background", "picture-uri", "file://"+path)
+		_ = cmd1.Run()
+		cmd2 := runGUICommand("gsettings", "set", "org.gnome.desktop.background", "picture-uri-dark", "file://"+path)
+		_ = cmd2.Run()
+		cmd3 := runGUICommand("gsettings", "set", "org.gnome.desktop.background", "picture-options", "zoom")
+		_ = cmd3.Run()
+	}
 
 	// XFCE Ayarları
 	listCmd := runGUICommand("xfconf-query", "-c", "xfce4-desktop", "-p", "/backdrop", "-l")
@@ -2106,29 +2117,47 @@ func setWallpaperLinux(path string) {
 		for _, line := range lines {
 			line = strings.TrimSpace(line)
 			if strings.HasSuffix(line, "last-image") || strings.HasSuffix(line, "image-path") {
-				hasXfceBackdrop = true
-				setCmd := runGUICommand("xfconf-query", "-c", "xfce4-desktop", "-p", line, "-s", path)
-				_ = setCmd.Run()
+				// Değer zaten bizim kilitli yolumuz mu?
+				alreadySet := false
+				getValCmd := runGUICommand("xfconf-query", "-c", "xfce4-desktop", "-p", line)
+				if valOut, valErr := getValCmd.Output(); valErr == nil {
+					if strings.TrimSpace(string(valOut)) == path {
+						alreadySet = true
+					}
+				}
+				if !alreadySet {
+					hasXfceBackdrop = true
+					setCmd := runGUICommand("xfconf-query", "-c", "xfce4-desktop", "-p", line, "-s", path)
+					_ = setCmd.Run()
 
-				// Duvar kağıdının ekrana tam oturması için stil değerini Zoomed (5) yap
-				styleProperty := strings.TrimSuffix(line, "last-image") + "image-style"
-				styleProperty = strings.TrimSuffix(styleProperty, "image-path") + "image-style"
-				styleCmd := runGUICommand("xfconf-query", "-c", "xfce4-desktop", "-p", styleProperty, "-s", "5")
-				_ = styleCmd.Run()
+					styleProperty := strings.TrimSuffix(line, "last-image") + "image-style"
+					styleProperty = strings.TrimSuffix(styleProperty, "image-path") + "image-style"
+					styleCmd := runGUICommand("xfconf-query", "-c", "xfce4-desktop", "-p", styleProperty, "-s", "5")
+					_ = styleCmd.Run()
+				}
 			}
 		}
 		if hasXfceBackdrop {
-			// XFCE masaüstünü yenilenmeye zorla (Duvar kağıdı anında güncellenir)
+			// Sadece bir değişiklik yapıldıysa yenile
 			reloadCmd := runGUICommand("xfdesktop", "--reload")
 			_ = reloadCmd.Run()
 		}
 	} else {
-		setCmd := runGUICommand("xfconf-query", "-c", "xfce4-desktop", "-p", "/backdrop/screen0/monitor0/workspace0/last-image", "-s", path)
-		_ = setCmd.Run()
-		styleCmd := runGUICommand("xfconf-query", "-c", "xfce4-desktop", "-p", "/backdrop/screen0/monitor0/workspace0/image-style", "-s", "5")
-		_ = styleCmd.Run()
-		reloadCmd := runGUICommand("xfdesktop", "--reload")
-		_ = reloadCmd.Run()
+		alreadySet := false
+		getValCmd := runGUICommand("xfconf-query", "-c", "xfce4-desktop", "-p", "/backdrop/screen0/monitor0/workspace0/last-image")
+		if valOut, valErr := getValCmd.Output(); valErr == nil {
+			if strings.TrimSpace(string(valOut)) == path {
+				alreadySet = true
+			}
+		}
+		if !alreadySet {
+			setCmd := runGUICommand("xfconf-query", "-c", "xfce4-desktop", "-p", "/backdrop/screen0/monitor0/workspace0/last-image", "-s", path)
+			_ = setCmd.Run()
+			styleCmd := runGUICommand("xfconf-query", "-c", "xfce4-desktop", "-p", "/backdrop/screen0/monitor0/workspace0/image-style", "-s", "5")
+			_ = styleCmd.Run()
+			reloadCmd := runGUICommand("xfdesktop", "--reload")
+			_ = reloadCmd.Run()
+		}
 	}
 }
 
@@ -2185,9 +2214,9 @@ func handleWallpaperLockCmd(locked bool, relativeURL string) {
 		log.Println("Duvar kağıdı dosyası oluşturulamadı:", err)
 		return
 	}
-	defer out.Close()
 
 	_, err = io.Copy(out, resp.Body)
+	out.Close() // Hemen kapat ve disk kilidini kaldır!
 	if err != nil {
 		log.Println("Duvar kağıdı kaydedilemedi:", err)
 		return

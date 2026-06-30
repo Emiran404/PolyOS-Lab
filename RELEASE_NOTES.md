@@ -1,3 +1,45 @@
+# PolyOS Lab v1.4.7 - Sürüm Açıklaması
+
+🎉 **PolyOS Lab v1.4.7**
+
+Bu sürüm; duvar kağıdı yenileme döngüsündeki ekran gidip-gelme sorununu çözer, kilitleme/açma işlemlerindeki donma/kilitlenme hatasını giderir, hızlı işlemler panelinde ekran boyutu ayarları ve bildirim başlıkları geliştirmelerini sunar.
+
+---
+
+## 🚀 Yenilikler ve İyileştirmeler
+
+### 🖼️ Masaüstü Yenileme Titremesi Giderildi (Flicker Fix)
+- **Akıllı Değişiklik Kontrolü:** Duvar kağıdı kilitleme döngüsünde masaüstü arka planı yalnızca öğrenci tarafından elle değiştirilirse yeniden uygulanır. Bu sayede `xfdesktop --reload` komutunun sürekli çalışarak ekranı titretmesi/yenilemesi engellendi.
+
+### 🔒 Kilitlenme (Deadlock) Hatası Çözüldü
+- **Asenkron Süreç Yönetimi:** Kilitleme penceresi sonlandırılırken (unlock) oluşan donma hatası giderildi. Arka planda çalışan sürecin `Wait()` fonksiyonunun ana websocket akışını kilitlemesi engellendi.
+
+### 📐 Hızlı İşlemler Ekran Boyutu Ayarı
+- **Dinamik Önizleme Boyutları:** Hızlı İşlemler sekmesine küçük, orta ve büyük ekran boyutu butonları eklendi. Öğretmenler öğrenci ekran önizlemelerini istedikleri boyutta görebilecekler.
+
+### 🔔 Özelleştirilmiş Bildirim Başlıkları
+- **Sınav ve Sistem Bildirimi Ayrımı:** Genel arayüz bildirimleri "Sistem Bildirimi" başlığı altında, öğrencilerden gelen ve loglardan yansıtılan mesajlar ise "Sınav Bildirimi" başlığı altında gösterilecek şekilde ayrıştırıldı.
+
+---
+
+# PolyOS Lab v1.4.6 - Sürüm Açıklaması
+
+🎉 **PolyOS Lab v1.4.6**
+
+Bu sürüm; duvar kağıdının anında uygulanmasını engelleyen dosya kilidi hatasını giderir ve Hızlı İşlemler panelindeki mesaj modal kutusunda yazı yazılamaması sorununu çözer.
+
+---
+
+## 🚀 Yenilikler ve İyileştirmeler
+
+### 🖼️ Masaüstü Duvar Kağıdı Anında Güncelleme Desteği
+- **Dosya Kilidi Düzeltildi:** İndirilen duvar kağıdı dosyasının Go tarafındaki kilidi (open handle) sistem masaüstü arka planı güncellenmeden önce kapatılarak işletim sisteminin dosyaya hemen erişip arka planı anında yenilemesi sağlandı.
+
+### 💬 Hızlı İşlemlerde Mesaj Gönder Kutusu Düzeltildi
+- **Yazı Yazılamama Sorunu Giderildi:** Mesaj gönderme modalındaki `<textarea>` bileşeni, Electron/React odaklanma kısıtlamalarını aşmak için standart `<input type="text">` bileşeni ile değiştirildi. Artık mesaj kutusuna sorunsuzca yazı yazılabilmektedir.
+
+---
+
 # PolyOS Lab v1.4.5 - Sürüm Açıklaması
 
 🎉 **PolyOS Lab v1.4.5**
