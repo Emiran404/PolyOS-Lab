@@ -2254,45 +2254,66 @@ function App() {
                   <p>Ekranı izlenecek bağlı istemci bulunmuyor.</p>
                 </div>
               ) : (
-                clients.map(client => (
-                  <div 
-                    key={client.id} 
-                    className="client-item" 
-                    onDragOver={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      e.currentTarget.style.borderColor = 'var(--primary)';
-                      e.currentTarget.style.boxShadow = '0 0 10px rgba(13, 148, 136, 0.3)';
-                    }}
-                    onDragLeave={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      e.currentTarget.style.borderColor = 'transparent';
-                      e.currentTarget.style.boxShadow = 'none';
-                    }}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      e.currentTarget.style.borderColor = 'transparent';
-                      e.currentTarget.style.boxShadow = 'none';
-                      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-                        const file = e.dataTransfer.files[0];
-                        uploadFileToTarget(file, client.id);
-                      }
-                    }}
-                    style={{ flexDirection: 'column', alignItems: 'stretch', gap: '12px', padding: '12px' }}
-                  >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontWeight: 600, fontSize: '14px' }}>{client.hostname}</span>
-                      <span style={{ backgroundColor: '#ecfdf5', color: '#059669', padding: '2px 8px', borderRadius: '10px', fontSize: '11px', fontWeight: 500 }}>Canlı</span>
-                    </div>
-                    {/* Real screen streaming with fallback */}
+                clients.map(client => {
+                  const isSelected = selectedClientIds.includes(client.id);
+                  return (
                     <div 
-                      onClick={() => startRemoteControl(client)}
+                      key={client.id} 
+                      className={`client-item ${isSelected ? 'selected' : ''}`}
+                      onClick={() => {
+                        if (isSelected) {
+                          setSelectedClientIds(prev => prev.filter(id => id !== client.id));
+                        } else {
+                          setSelectedClientIds(prev => [...prev, client.id]);
+                        }
+                      }}
+                      onDoubleClick={(e) => {
+                        e.stopPropagation();
+                        startRemoteControl(client);
+                      }}
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        e.currentTarget.style.borderColor = 'var(--primary)';
+                        e.currentTarget.style.boxShadow = '0 0 10px rgba(13, 148, 136, 0.3)';
+                      }}
+                      onDragLeave={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        e.currentTarget.style.borderColor = isSelected ? 'var(--primary)' : 'var(--color-border)';
+                        e.currentTarget.style.boxShadow = 'none';
+                      }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        e.currentTarget.style.borderColor = isSelected ? 'var(--primary)' : 'var(--color-border)';
+                        e.currentTarget.style.boxShadow = 'none';
+                        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                          const file = e.dataTransfer.files[0];
+                          uploadFileToTarget(file, client.id);
+                        }
+                      }}
                       style={{ 
-                        position: 'relative', 
-                        height: '160px', 
-                        borderRadius: '8px', 
+                        flexDirection: 'column', 
+                        alignItems: 'stretch', 
+                        gap: '12px', 
+                        padding: '12px',
+                        border: isSelected ? '2px solid var(--primary)' : '1px solid var(--color-border)',
+                        borderRadius: '12px',
+                        transition: 'all 0.2s',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontWeight: 600, fontSize: '14px' }}>{client.hostname}</span>
+                        <span style={{ backgroundColor: '#ecfdf5', color: '#059669', padding: '2px 8px', borderRadius: '10px', fontSize: '11px', fontWeight: 500 }}>Canlı</span>
+                      </div>
+                      {/* Real screen streaming with fallback */}
+                      <div 
+                        style={{ 
+                          position: 'relative', 
+                          height: '160px', 
+                          borderRadius: '8px', 
                         overflow: 'hidden', 
                         border: '1px solid var(--color-border)', 
                         backgroundColor: '#0f172a',
@@ -2351,7 +2372,8 @@ function App() {
                       </button>
                     </div>
                   </div>
-                ))
+                  );
+                })
               )}
             </div>
           </div>
@@ -2733,7 +2755,7 @@ function App() {
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(0,0,0,0.03)', paddingBottom: '6px' }}>
                     <span style={{ color: 'var(--color-text-secondary)' }}>Sürüm (Version):</span>
-                    <span style={{ fontWeight: 600, color: '#3b82f6' }}>v1.5.0</span>
+                    <span style={{ fontWeight: 600, color: '#3b82f6' }}>v1.5.1</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(0,0,0,0.03)', paddingBottom: '6px' }}>
                     <span style={{ color: 'var(--color-text-secondary)' }}>Geliştirici (Developer):</span>
