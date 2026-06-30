@@ -990,8 +990,21 @@ function App() {
         console.log("Teacher screen share WebSocket opened.");
         sendToAll("screen_share_on");
         
+        // Chromium'un video çözücüyü durdurmaması için elementi DOM'a ekliyoruz
+        const oldVideo = document.getElementById('polyos-screen-share-video');
+        if (oldVideo) oldVideo.remove();
+
         const video = document.createElement('video');
+        video.id = 'polyos-screen-share-video';
+        video.style.position = 'absolute';
+        video.style.width = '0px';
+        video.style.height = '0px';
+        video.style.opacity = '0';
+        video.style.pointerEvents = 'none';
+        video.muted = true;
+        video.playsInline = true;
         video.srcObject = stream;
+        document.body.appendChild(video);
         video.play();
         
         const canvas = document.createElement('canvas');
@@ -1037,6 +1050,13 @@ function App() {
       teacherWs.close();
       setTeacherWs(null);
     }
+    
+    // DOM'daki gizli video elementini temizle
+    const video = document.getElementById('polyos-screen-share-video');
+    if (video) {
+      video.remove();
+    }
+
     sendToAll("screen_share_off");
     setIsSharingScreen(false);
   };
@@ -2689,7 +2709,7 @@ function App() {
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(0,0,0,0.03)', paddingBottom: '6px' }}>
                     <span style={{ color: 'var(--color-text-secondary)' }}>Sürüm (Version):</span>
-                    <span style={{ fontWeight: 600, color: '#3b82f6' }}>v1.4.8</span>
+                    <span style={{ fontWeight: 600, color: '#3b82f6' }}>v1.4.9</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(0,0,0,0.03)', paddingBottom: '6px' }}>
                     <span style={{ color: 'var(--color-text-secondary)' }}>Geliştirici (Developer):</span>

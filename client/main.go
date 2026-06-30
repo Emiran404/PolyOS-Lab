@@ -29,7 +29,7 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-const clientVersion = "1.4.8"
+const clientVersion = "1.4.9"
 
 var (
 	captureInterval = 2000 * time.Millisecond
@@ -1342,7 +1342,6 @@ func stopScreenShareViewer() {
 
 	if screenShareCmd != nil {
 		_ = screenShareCmd.Process.Kill()
-		_ = screenShareCmd.Wait()
 		screenShareCmd = nil
 	}
 	killProcessByName("firefox")

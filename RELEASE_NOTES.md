@@ -1,3 +1,21 @@
+# PolyOS Lab v1.4.9 - Sürüm Açıklaması
+
+🎉 **PolyOS Lab v1.4.9**
+
+Bu sürüm; öğretmen ekranını yansıtma (screen share) sistemindeki siyah ekran problemini çözer, yansıtmayı durdururken oluşan kilitlenmeleri/donmaları (deadlock) tamamen ortadan kaldırır.
+
+---
+
+## 🚀 Yenilikler ve İyileştirmeler
+
+### 📺 Ekran Yansıtma Siyah Ekran Çözümü
+- **DOM-Bağlantılı Çözüm:** Chromium alt yapısında (Electron) ekran yansıtma verilerini çeken gizli video elementinin oynatılmasının duraklaması engellendi. Video elementinin DOM'a bağlanması ve `muted`, `playsInline` parametrelerinin zorunlu kılınması sağlanarak siyah ekran sorunu tamamen çözüldü.
+
+### 🛑 Ekran Paylaşımı Durdurma Deadlock Çözümü
+- **Güvenli Süreç Kapatma:** Ekran paylaşımı durdurulurken (stopScreenShare) istemcilerdeki asenkron sürecin `Wait()` fonksiyonu tarafından bloke edilmesi sorunu giderildi. Kilitlenmeler önlendi ve uzaktan komutların (yeniden başlatma, kapatma vb.) her zaman kararlı çalışması sağlandı.
+
+---
+
 # PolyOS Lab v1.4.8 - Sürüm Açıklaması
 
 🎉 **PolyOS Lab v1.4.8**
