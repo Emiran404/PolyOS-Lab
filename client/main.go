@@ -29,7 +29,7 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-const clientVersion = "1.4.7"
+const clientVersion = "1.4.8"
 
 var (
 	captureInterval = 2000 * time.Millisecond
@@ -2065,22 +2065,41 @@ func flushDNSCache() {
 	_ = exec.Command("nscd", "-i", "hosts").Run()
 }
 
-func getLocalWallpaperPath() string {
+func getLocalWallpaperPath(filename string) string {
 	_ = os.MkdirAll("/etc/polyos", 0755)
+	
+	// Eski kilitli duvar kağıtlarını temizle
+	if files, err := os.ReadDir("/etc/polyos"); err == nil {
+		for _, f := range files {
+			if !f.IsDir() && strings.HasPrefix(f.Name(), "locked-wallpaper") {
+				_ = os.Remove(filepath.Join("/etc/polyos", f.Name()))
+			}
+		}
+	}
+
 	testFile := "/etc/polyos/test_write"
 	if err := os.WriteFile(testFile, []byte("test"), 0644); err == nil {
 		_ = os.Remove(testFile)
-		return "/etc/polyos/locked-wallpaper.jpg"
+		return filepath.Join("/etc/polyos", filename)
 	}
 
 	home, err := os.UserHomeDir()
 	if err == nil {
 		dir := filepath.Join(home, ".config", "polyos-lab")
 		_ = os.MkdirAll(dir, 0755)
-		return filepath.Join(dir, "locked-wallpaper.jpg")
+		
+		if files, err := os.ReadDir(dir); err == nil {
+			for _, f := range files {
+				if !f.IsDir() && strings.HasPrefix(f.Name(), "locked-wallpaper") {
+					_ = os.Remove(filepath.Join(dir, f.Name()))
+				}
+			}
+		}
+		
+		return filepath.Join(dir, filename)
 	}
 
-	return filepath.Join(os.TempDir(), "locked-wallpaper.jpg")
+	return filepath.Join(os.TempDir(), filename)
 }
 
 func setWallpaperLinux(path string) {
@@ -2168,13 +2187,13 @@ func startWallpaperLockMonitor() {
 
 			wallpaperStateMutex.Lock()
 			locked := wallpaperLocked
+			path := lockedWallpaperPath
 			wallpaperStateMutex.Unlock()
 
-			if !locked {
+			if !locked || path == "" {
 				continue
 			}
 
-			path := getLocalWallpaperPath()
 			if _, err := os.Stat(path); err == nil {
 				setWallpaperLinux(path)
 			}
@@ -2185,6 +2204,9 @@ func startWallpaperLockMonitor() {
 func handleWallpaperLockCmd(locked bool, relativeURL string) {
 	wallpaperStateMutex.Lock()
 	wallpaperLocked = locked
+	if !locked {
+		lockedWallpaperPath = ""
+	}
 	wallpaperStateMutex.Unlock()
 
 	if !locked {
@@ -2208,7 +2230,13 @@ func handleWallpaperLockCmd(locked bool, relativeURL string) {
 	}
 	defer resp.Body.Close()
 
-	localPath := getLocalWallpaperPath()
+	// URL'den benzersiz dosya adını al
+	filename := filepath.Base(relativeURL)
+	if filename == "" || filename == "." || filename == "/" {
+		filename = "locked-wallpaper.jpg"
+	}
+	localPath := getLocalWallpaperPath(filename)
+
 	out, err := os.Create(localPath)
 	if err != nil {
 		log.Println("Duvar kağıdı dosyası oluşturulamadı:", err)
@@ -2223,5 +2251,10 @@ func handleWallpaperLockCmd(locked bool, relativeURL string) {
 	}
 
 	log.Printf("Duvar kağıdı indirildi ve kaydedildi: %s\n", localPath)
+	
+	wallpaperStateMutex.Lock()
+	lockedWallpaperPath = localPath
+	wallpaperStateMutex.Unlock()
+
 	setWallpaperLinux(localPath)
 }

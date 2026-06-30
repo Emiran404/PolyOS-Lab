@@ -1,3 +1,20 @@
+# PolyOS Lab v1.4.8 - Sürüm Açıklaması
+
+🎉 **PolyOS Lab v1.4.8**
+
+Bu sürüm; öğretmen paneli üzerinden yüklenen duvar kağıtlarının istemcilere anında yansımama sorununu çözer ve HTTP cache-busting ile temizlik döngüleri iyileştirmelerini içerir.
+
+---
+
+## 🚀 Yenilikler ve İyileştirmeler
+
+### 🖼️ Duvar Kağıdı Cache-Busting & Anında Otomatik Yenilenme
+- **Benzersiz Dosya İsimlendirmesi:** Sunucuya yüklenen her yeni duvar kağıdı, ismine eklenen zaman damgası (UnixNano timestamp) ile kaydedilir. Bu sayede istemci cihazlar HTTP önbelleklerini (cache) tamamen atlayarak yeni duvar kağıdını anında indirir.
+- **Dinamik Yol Eşleştirmesi:** İstemciler duvar kağıtlarını benzersiz dosya adlarıyla (`locked-wallpaper_<timestamp>.jpg`) yerel disklerine kaydeder. Böylece dosya yolu değiştiği için işletim sistemi masaüstü arka planını anında otomatik olarak yeniler.
+- **Otomatik Disk Temizliği:** Hem sunucu hem de istemci tarafındaki eski duvar kağıdı dosyaları otomatik olarak temizlenerek disk alanı israfı engellenir.
+
+---
+
 # PolyOS Lab v1.4.7 - Sürüm Açıklaması
 
 🎉 **PolyOS Lab v1.4.7**

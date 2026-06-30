@@ -1358,8 +1358,17 @@ func handleUploadWallpaper(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Eski kilitli duvar kağıtlarını temizle
+	if files, err := os.ReadDir(uploadDir); err == nil {
+		for _, f := range files {
+			if !f.IsDir() && strings.HasPrefix(f.Name(), "locked-wallpaper") {
+				_ = os.Remove(filepath.Join(uploadDir, f.Name()))
+			}
+		}
+	}
+
 	ext := filepath.Ext(handler.Filename)
-	safeFilename := "locked-wallpaper" + ext
+	safeFilename := fmt.Sprintf("locked-wallpaper_%d%s", time.Now().UnixNano(), ext)
 	filePath := filepath.Join(uploadDir, safeFilename)
 
 	dst, err := os.Create(filePath)
