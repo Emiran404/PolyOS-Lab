@@ -171,17 +171,15 @@ func handleWS(w http.ResponseWriter, r *http.Request) {
 	}
 
 	mutex.Lock()
-	// Aynı hostname'e sahip eski tüm bağlantıları kapat ve temizle
-	for oldID, oldClient := range clients {
-		if oldClient.Hostname == handshake.Hostname {
-			log.Printf("Aynı hostname'e sahip eski bağlantı temizleniyor: %s (%s)\n", oldClient.Hostname, oldID)
-			oldClient.Conn.Close()
-			delete(clients, oldID)
-			delete(latestScreens, oldID)
-			telemetryMutex.Lock()
-			delete(clientTelemetry, oldID)
-			telemetryMutex.Unlock()
-		}
+	// Aynı clientID (MAC) değerine sahip eski bağlantıyı kapat ve temizle
+	if oldClient, exists := clients[clientID]; exists {
+		log.Printf("Aynı MAC adresine sahip eski bağlantı temizleniyor: %s (%s)\n", oldClient.Hostname, clientID)
+		oldClient.Conn.Close()
+		delete(clients, clientID)
+		delete(latestScreens, clientID)
+		telemetryMutex.Lock()
+		delete(clientTelemetry, clientID)
+		telemetryMutex.Unlock()
 	}
 	clients[clientID] = client
 	mutex.Unlock()
