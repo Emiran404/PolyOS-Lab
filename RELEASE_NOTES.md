@@ -1,6 +1,6 @@
-# PolyOS Lab v1.4.4.1 - Sürüm Açıklaması
+# PolyOS Lab v1.4.5 - Sürüm Açıklaması
 
-🎉 **PolyOS Lab v1.4.4.1**
+🎉 **PolyOS Lab v1.4.5**
 
 Bu sürüm; Pardus (XFCE ve GNOME) bilgisayarlarda öğretmen paneli üzerinden gönderilen duvar kağıdı/masaüstü resminin değişmeme veya güncellenmeme sorununu giderir.
 
