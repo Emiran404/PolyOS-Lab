@@ -1,3 +1,24 @@
+# PolyOS Lab v1.4.4 - Sürüm Açıklaması
+
+🎉 **PolyOS Lab v1.4.4**
+
+Bu sürüm; laboratuvarlarda aynı bilgisayar adına (hostname) sahip öğrenci cihazlarının bağlantı kararlılığını artırır, arayüzdeki rastgele yer değiştirme durumunu düzeltir ve işlemler için anlık bildirim sistemi ekler.
+
+---
+
+## 🚀 Yenilikler ve İyileştirmeler
+
+### 🔌 MAC Adresi Tabanlı Bağlantı Güvenliği
+- **Hostname Çakışma Önleme:** Aynı ada (örn: `pardus`) sahip bilgisayarlar bağlandığında birbirlerini ağdan atmaları ve bağlantı kopma döngüleri engellendi. Bağlantı kontrolleri tamamen MAC adresi bazlı hale getirildi.
+
+### 📌 Sabit Cihaz Konumları & Sıralama
+- **Rastgele Yer Değiştirme Düzeltildi:** İstemci listesi ve hızlı eylemlerdeki bilgisayarların arayüzde rastgele yer değiştirmesi engellendi. İstemciler MAC adreslerine göre sabit şekilde sıralandı.
+
+### 🔔 İşlem Başarılı Bildirimleri
+- **Anlık Geri Bildirim:** Hızlı İşlemler panelinden veya istemci kartlarından tetiklenen tüm uzaktan kontrol eylemlerinde (kilitleme, kapatma, uyandırma vb.) sağ üst köşede şık bir "İşlem başarıyla gönderildi" bildirimi gösterilmesi sağlandı.
+
+---
+
 # PolyOS Lab v1.4.3 - Sürüm Açıklaması
 
 🎉 **PolyOS Lab v1.4.3**

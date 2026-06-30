@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -842,16 +843,29 @@ func getClients(w http.ResponseWriter, r *http.Request) {
 	mutex.Lock()
 	defer mutex.Unlock()
 	
-	w.Write([]byte(`[`))
-	first := true
-	for id, c := range clients {
-		if !first {
-			w.Write([]byte(`,`))
-		}
-		w.Write([]byte(fmt.Sprintf(`{"id":"%s", "hostname":"%s", "mac":"%s", "version":"%s"}`, id, c.Hostname, c.MAC, c.Version)))
-		first = false
+	type ClientInfo struct {
+		ID       string `json:"id"`
+		Hostname string `json:"hostname"`
+		MAC      string `json:"mac"`
+		Version  string `json:"version"`
 	}
-	w.Write([]byte(`]`))
+	
+	var list []ClientInfo
+	for id, c := range clients {
+		list = append(list, ClientInfo{
+			ID:       id,
+			Hostname: c.Hostname,
+			MAC:      c.MAC,
+			Version:  c.Version,
+		})
+	}
+	
+	// Cihazların arayüzde rastgele yer değiştirmemesi için MAC adresine göre sırala
+	sort.Slice(list, func(i, j int) bool {
+		return list[i].MAC < list[j].MAC
+	})
+	
+	json.NewEncoder(w).Encode(list)
 }
 
 // Dashboard'dan gelen komutları işleyen REST API

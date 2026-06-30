@@ -219,11 +219,16 @@ function App() {
   const [wallpaperPath, setWallpaperPath] = useState<string>('');
   const [isUploadingWallpaper, setIsUploadingWallpaper] = useState<boolean>(false);
 
+  const toastTimeoutRef = useRef<any>(null);
   const showDashboardNotification = (msg: string) => {
     setActiveToast(msg);
-    setTimeout(() => {
+    if (toastTimeoutRef.current) {
+      clearTimeout(toastTimeoutRef.current);
+    }
+    toastTimeoutRef.current = setTimeout(() => {
       setActiveToast(null);
-    }, 6000);
+      toastTimeoutRef.current = null;
+    }, 4500);
   };
 
   const handleDefaultStartTabChange = (val: string) => {
@@ -1065,13 +1070,16 @@ function App() {
 
   const sendCommand = async (clientId: string, command: string) => {
     try {
-      await fetch('http://localhost:8080/api/command', {
+      const response = await fetch('http://localhost:8080/api/command', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ clientId, command }),
       });
+      if (response.ok) {
+        showDashboardNotification("İşlem başarıyla gönderildi.");
+      }
     } catch (error) {
       console.error("Failed to send command:", error);
     }
@@ -1107,6 +1115,7 @@ function App() {
 
   const sendToAll = (command: string) => {
     clients.forEach(c => sendCommand(c.id, command));
+    showDashboardNotification("Komut tüm cihazlara gönderildi.");
   };
 
   const handleQualityChange = (newQuality: string) => {
@@ -1126,6 +1135,7 @@ function App() {
       return;
     }
     selectedClientIds.forEach(id => sendCommand(id, command));
+    showDashboardNotification("İşlem seçili cihazlara başarıyla gönderildi.");
   };
 
   const handleOpenUrlSubmit = (url: string) => {
@@ -2618,7 +2628,7 @@ function App() {
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(0,0,0,0.03)', paddingBottom: '6px' }}>
                     <span style={{ color: 'var(--color-text-secondary)' }}>Sürüm (Version):</span>
-                    <span style={{ fontWeight: 600, color: '#3b82f6' }}>v1.4.3</span>
+                    <span style={{ fontWeight: 600, color: '#3b82f6' }}>v1.4.4</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(0,0,0,0.03)', paddingBottom: '6px' }}>
                     <span style={{ color: 'var(--color-text-secondary)' }}>Geliştirici (Developer):</span>
