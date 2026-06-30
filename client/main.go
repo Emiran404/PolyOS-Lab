@@ -29,7 +29,7 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-const clientVersion = "1.4.4"
+const clientVersion = "1.4.4.1"
 
 var (
 	captureInterval = 2000 * time.Millisecond
@@ -2089,25 +2089,46 @@ func setWallpaperLinux(path string) {
 		return
 	}
 
+	// GNOME Ayarları
 	cmd1 := runGUICommand("gsettings", "set", "org.gnome.desktop.background", "picture-uri", "file://"+path)
 	_ = cmd1.Run()
 	cmd2 := runGUICommand("gsettings", "set", "org.gnome.desktop.background", "picture-uri-dark", "file://"+path)
 	_ = cmd2.Run()
+	cmd3 := runGUICommand("gsettings", "set", "org.gnome.desktop.background", "picture-options", "zoom")
+	_ = cmd3.Run()
 
+	// XFCE Ayarları
 	listCmd := runGUICommand("xfconf-query", "-c", "xfce4-desktop", "-p", "/backdrop", "-l")
 	out, err := listCmd.Output()
 	if err == nil {
 		lines := strings.Split(string(out), "\n")
+		hasXfceBackdrop := false
 		for _, line := range lines {
 			line = strings.TrimSpace(line)
 			if strings.HasSuffix(line, "last-image") || strings.HasSuffix(line, "image-path") {
+				hasXfceBackdrop = true
 				setCmd := runGUICommand("xfconf-query", "-c", "xfce4-desktop", "-p", line, "-s", path)
 				_ = setCmd.Run()
+
+				// Duvar kağıdının ekrana tam oturması için stil değerini Zoomed (5) yap
+				styleProperty := strings.TrimSuffix(line, "last-image") + "image-style"
+				styleProperty = strings.TrimSuffix(styleProperty, "image-path") + "image-style"
+				styleCmd := runGUICommand("xfconf-query", "-c", "xfce4-desktop", "-p", styleProperty, "-s", "5")
+				_ = styleCmd.Run()
 			}
+		}
+		if hasXfceBackdrop {
+			// XFCE masaüstünü yenilenmeye zorla (Duvar kağıdı anında güncellenir)
+			reloadCmd := runGUICommand("xfdesktop", "--reload")
+			_ = reloadCmd.Run()
 		}
 	} else {
 		setCmd := runGUICommand("xfconf-query", "-c", "xfce4-desktop", "-p", "/backdrop/screen0/monitor0/workspace0/last-image", "-s", path)
 		_ = setCmd.Run()
+		styleCmd := runGUICommand("xfconf-query", "-c", "xfce4-desktop", "-p", "/backdrop/screen0/monitor0/workspace0/image-style", "-s", "5")
+		_ = styleCmd.Run()
+		reloadCmd := runGUICommand("xfdesktop", "--reload")
+		_ = reloadCmd.Run()
 	}
 }
 
