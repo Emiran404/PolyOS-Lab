@@ -1,3 +1,22 @@
+# PolyOS Lab v1.5.0 - Sürüm Açıklaması
+
+🎉 **PolyOS Lab v1.5.0**
+
+Bu sürüm; öğretmen ekranı yansıtırken (screen sharing) oluşan WebSocket bağlantı yetkilendirme sorununu çözer ve öğretmen panelindeki modal arayüzlerde (Mesaj Gönder, Uzaktan Root Terminali) yaşanan odaklanma/yazamama (keyboard focus) problemlerini tamamen giderir.
+
+---
+
+## 🚀 Yenilikler ve İyileştirmeler
+
+### 🔌 Ekran Yansıtma WebSocket Bağlantı Çözümü
+- **Token Yetkilendirmesi:** `/ws/student-viewer` yansıtma WebSocket bağlantı yolunun güvenli token doğrulaması yapabilmesi için HTML/JS koduna otomatik `?token=polyos-secure-token` parametresi eklendi. Bağlantı reddedilme hatası tamamen çözüldü.
+
+### ⌨️ Arayüz Yazı Yazamama & Odaklanma Düzeltmeleri
+- **Güvenli noVNC Klavye Yakalaması:** noVNC (`RFB`) başlatılırken `focusOnClick: true` özelliği etkinleştirildi. Bu sayede noVNC sadece kendi tuvaline (canvas) tıklandığında klavyeyi dinler ve öğretmen panelindeki diğer pencerelerin (Mesaj Gönder, Uzaktan Root Terminal vb.) klavye olaylarını yutmaz.
+- **Yazılımsal Input Focus & Select:** Mesaj Gönder ve Uzaktan Root Terminal modal pencereleri açıldığında, React `useRef` ve `useEffect` kancalarıyla otomatik odaklanma (`focus()`) ve metin seçme (`select()`) işlemleri milisaniyelik gecikmeli olarak tetiklenir. Bu sayede klavyeyle doğrudan yazmaya başlanabilir.
+
+---
+
 # PolyOS Lab v1.4.9 - Sürüm Açıklaması
 
 🎉 **PolyOS Lab v1.4.9**

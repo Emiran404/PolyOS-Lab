@@ -680,7 +680,7 @@ const shareHTML = `<!DOCTYPE html>
 	<script>
 		const img = document.getElementById('screen');
 		const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-		const wsUrl = protocol + '//' + window.location.host + '/ws/student-viewer';
+		const wsUrl = protocol + '//' + window.location.host + '/ws/student-viewer?token=polyos-secure-token';
 		
 		function connect() {
 			const ws = new WebSocket(wsUrl);

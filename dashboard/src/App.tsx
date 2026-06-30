@@ -68,7 +68,8 @@ function VncViewer({ url, viewOnly = false, style }: VncViewerProps) {
     let rfb: any = null;
     try {
       rfb = new RFB(containerRef.current, url, {
-        wsProtocols: ['binary']
+        wsProtocols: ['binary'],
+        focusOnClick: true
       });
 
       rfb.scaleViewport = true;
@@ -415,6 +416,29 @@ function App() {
   const [messageModalOpen, setMessageModalOpen] = useState(false);
   const [messageText, setMessageText] = useState('');
 
+  const messageInputRef = useRef<HTMLInputElement>(null);
+  const terminalInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (messageModalOpen) {
+      const timer = setTimeout(() => {
+        messageInputRef.current?.focus();
+        messageInputRef.current?.select();
+      }, 150);
+      return () => clearTimeout(timer);
+    }
+  }, [messageModalOpen]);
+
+  useEffect(() => {
+    if (activeTerminalClients.length > 0) {
+      const timer = setTimeout(() => {
+        terminalInputRef.current?.focus();
+        terminalInputRef.current?.select();
+      }, 150);
+      return () => clearTimeout(timer);
+    }
+  }, [activeTerminalClients]);
+
   useEffect(() => {
     if (selectedClientIds.length > 0) {
       setTargetClient('selected');
@@ -710,7 +734,7 @@ function App() {
       
       // Eğer kullanıcı arayüzdeki bir input alanına yazı yazıyorsa VNC klavye yakalamasını devre dışı bırak
       const activeEl = document.activeElement;
-      if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA')) {
+      if (activeEl && (activeEl.tagName.toUpperCase() === 'INPUT' || activeEl.tagName.toUpperCase() === 'TEXTAREA')) {
         return;
       }
       
@@ -2709,7 +2733,7 @@ function App() {
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(0,0,0,0.03)', paddingBottom: '6px' }}>
                     <span style={{ color: 'var(--color-text-secondary)' }}>Sürüm (Version):</span>
-                    <span style={{ fontWeight: 600, color: '#3b82f6' }}>v1.4.9</span>
+                    <span style={{ fontWeight: 600, color: '#3b82f6' }}>v1.5.0</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(0,0,0,0.03)', paddingBottom: '6px' }}>
                     <span style={{ color: 'var(--color-text-secondary)' }}>Geliştirici (Developer):</span>
@@ -3503,6 +3527,7 @@ function App() {
             <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: '#0f172a' }}>Öğrencilere Mesaj Gönder</h3>
             <p style={{ margin: 0, fontSize: '13px', color: '#64748b' }}>Seçili öğrencilerin ekranlarında gösterilecek olan mesajı yazın:</p>
             <input 
+              ref={messageInputRef}
               type="text"
               placeholder="Ders başladı, lütfen tarayıcılarınızı kapatın..." 
               value={messageText}
@@ -3708,6 +3733,7 @@ function App() {
                 root@polyos-lab:~#
               </span>
               <input 
+                ref={terminalInputRef}
                 type="text"
                 placeholder="Komut girin (örn: systemctl restart lightdm, reboot, apt update)..."
                 value={terminalInput}
