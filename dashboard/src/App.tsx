@@ -2591,14 +2591,9 @@ function App() {
                     Sunucuyu Başlat
                   </button>
                 ) : (
-                  <>
-                    <button className="btn-primary" onClick={() => controlServer('restart')} style={{ backgroundColor: '#3b82f6' }}>
-                      Yeniden Başlat
-                    </button>
                     <button className="btn-primary" onClick={() => controlServer('stop')} style={{ backgroundColor: '#dc2626' }}>
                       Sunucuyu Durdur
                     </button>
-                  </>
                 )}
               </div>
 
@@ -2755,7 +2750,7 @@ function App() {
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(0,0,0,0.03)', paddingBottom: '6px' }}>
                     <span style={{ color: 'var(--color-text-secondary)' }}>Sürüm (Version):</span>
-                    <span style={{ fontWeight: 600, color: '#3b82f6' }}>v1.5.2</span>
+                    <span style={{ fontWeight: 600, color: '#3b82f6' }}>v1.5.3</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(0,0,0,0.03)', paddingBottom: '6px' }}>
                     <span style={{ color: 'var(--color-text-secondary)' }}>Geliştirici (Developer):</span>

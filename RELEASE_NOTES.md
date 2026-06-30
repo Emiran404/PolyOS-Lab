@@ -1,3 +1,18 @@
+# PolyOS Lab v1.5.3 - Sürüm Açıklaması
+
+🎉 **PolyOS Lab v1.5.3**
+
+Bu sürüm; Electron'un Ağ Servisinin (Network Service) beklenmedik şekilde çökmesi/kapanması hatasını giderir ve otomatik port temizleme sürecini daha güvenli hale getirir.
+
+---
+
+## 🚀 Yenilikler ve İyileştirmeler
+
+### 🌐 Güvenli Port Temizleme ve Network Service Stabilizasyonu
+- **Sadece Dinleyici Süreci Hedefleme (TCP LISTEN only):** Port temizleme komutu (`killProcessOnPort`) sadece belirtilen portu dinleyen (`LISTEN` durumundaki) Go sunucu sürecini hedef alacak şekilde güncellendi. Electron'un bu port üzerindeki aktif bağlantı soketlerini (established sockets) yanlışlıkla öldürerek `Network service crashed` hatasına ve uygulamanın kendini sürekli döngüsel olarak yeniden başlatmasına sebep olan problem tamamen çözüldü.
+
+---
+
 # PolyOS Lab v1.5.2 - Sürüm Açıklaması
 
 🎉 **PolyOS Lab v1.5.2**

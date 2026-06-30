@@ -23,9 +23,9 @@ function buildGoServer() {
 function killProcessOnPort(port) {
   try {
     if (process.platform === 'win32') {
-      execSync(`for /f "tokens=5" %a in ('netstat -aon ^| findstr "${port}"') do taskkill /f /pid %a`, { stdio: 'ignore' });
+      execSync(`for /f "tokens=5" %a in ('netstat -aon ^| findstr "${port}" ^| findstr /i "listening"') do taskkill /f /pid %a`, { stdio: 'ignore' });
     } else {
-      execSync(`lsof -t -i:${port} | xargs kill -9`, { stdio: 'ignore' });
+      execSync(`lsof -t -iTCP:${port} -sTCP:LISTEN | xargs kill -9`, { stdio: 'ignore' });
     }
     console.log(`Cleared port ${port}`);
   } catch (err) {
