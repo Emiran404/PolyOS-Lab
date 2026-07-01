@@ -29,7 +29,7 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-const clientVersion = "1.6.0"
+const clientVersion = "1.6.1"
 
 var (
 	captureInterval = 2000 * time.Millisecond

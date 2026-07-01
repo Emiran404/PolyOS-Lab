@@ -389,6 +389,56 @@ function App() {
   const [rcTicker, setRcTicker] = useState(0);
   const [clipboardText, setClipboardText] = useState('');
 
+  // Çift Aşamalı Kritik Eylem Onay Modali State'i
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    confirmText?: string;
+    cancelText?: string;
+    isDanger?: boolean;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+    confirmText: 'Evet, Devam Et',
+    cancelText: 'Vazgeç',
+    isDanger: false
+  });
+
+  const requestConfirmation = (
+    title: string,
+    message: string,
+    onConfirm: () => void,
+    isDanger = true,
+    confirmText = 'Evet, Eminim',
+    cancelText = 'Vazgeç'
+  ) => {
+    setConfirmModal({
+      isOpen: true,
+      title,
+      message,
+      onConfirm,
+      confirmText,
+      cancelText,
+      isDanger
+    });
+  };
+
+  const confirmCommand = (command: 'shutdown' | 'reboot', isBulk: boolean, targetName: string, execute: () => void) => {
+    const actionText = command === 'shutdown' ? 'KAPATMAK' : 'YENİDEN BAŞLATMAK';
+    const targetText = isBulk ? `TÜM (${targetName})` : `"${targetName}" isimli`;
+    
+    requestConfirmation(
+      "⚠️ Kritik Sistem Eylemi",
+      `${targetText} bilgisayarı/bilgisayarları ${actionText} istediğinize emin misiniz? Bu işlem geri alınamaz ve kaydedilmemiş tüm çalışmalar kaybolur.`,
+      execute,
+      true
+    );
+  };
+
   // Entegre Sunucu State'leri
   const [serverState, setServerState] = useState<{ status: 'running' | 'stopped'; port: string }>({
     status: 'stopped',
@@ -1123,7 +1173,13 @@ function App() {
     }
   };
 
-  const sendCommand = async (clientId: string, command: string) => {
+  const sendCommand = async (clientId: string, command: string, skipConfirm = false) => {
+    if (!skipConfirm && (command === 'shutdown' || command === 'reboot')) {
+      const client = clients.find(c => c.id === clientId);
+      const name = client ? client.hostname : 'Seçili Cihaz';
+      confirmCommand(command, false, name, () => sendCommand(clientId, command, true));
+      return;
+    }
     try {
       const response = await fetch('http://localhost:8080/api/command', {
         method: 'POST',
@@ -1168,8 +1224,12 @@ function App() {
     }
   };
 
-  const sendToAll = (command: string) => {
-    clients.forEach(c => sendCommand(c.id, command));
+  const sendToAll = (command: string, skipConfirm = false) => {
+    if (!skipConfirm && (command === 'shutdown' || command === 'reboot')) {
+      confirmCommand(command, true, `${clients.length} Cihaz`, () => sendToAll(command, true));
+      return;
+    }
+    clients.forEach(c => sendCommand(c.id, command, true));
     showDashboardNotification("Komut tüm cihazlara gönderildi.");
   };
 
@@ -1184,12 +1244,16 @@ function App() {
     sendToAll(newTech);
   };
 
-  const sendCommandToSelected = (command: string) => {
+  const sendCommandToSelected = (command: string, skipConfirm = false) => {
     if (selectedClientIds.length === 0) {
       alert("Lütfen en az bir istemci seçin.");
       return;
     }
-    selectedClientIds.forEach(id => sendCommand(id, command));
+    if (!skipConfirm && (command === 'shutdown' || command === 'reboot')) {
+      confirmCommand(command, true, `${selectedClientIds.length} Cihaz`, () => sendCommandToSelected(command, true));
+      return;
+    }
+    selectedClientIds.forEach(id => sendCommand(id, command, true));
     showDashboardNotification("İşlem seçili cihazlara başarıyla gönderildi.");
   };
 
@@ -2747,7 +2811,7 @@ function App() {
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(0,0,0,0.03)', paddingBottom: '6px' }}>
                     <span style={{ color: 'var(--color-text-secondary)' }}>Sürüm (Version):</span>
-                    <span style={{ fontWeight: 600, color: '#3b82f6' }}>v1.6.0</span>
+                    <span style={{ fontWeight: 600, color: '#3b82f6' }}>v1.6.1</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(0,0,0,0.03)', paddingBottom: '6px' }}>
                     <span style={{ color: 'var(--color-text-secondary)' }}>Geliştirici (Developer):</span>
@@ -3420,6 +3484,119 @@ function App() {
                 }}
               />
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Çift Aşamalı Kritik Eylem Onay Modali */}
+      {confirmModal.isOpen && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100vw',
+          height: '100vh',
+          backgroundColor: 'rgba(15, 23, 42, 0.75)',
+          backdropFilter: 'blur(8px)',
+          zIndex: 100000,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}>
+          <div style={{
+            backgroundColor: '#fff',
+            borderRadius: '24px',
+            boxShadow: '0 25px 50px -12px rgba(220, 38, 38, 0.25), 0 10px 20px -10px rgba(0, 0, 0, 0.05)',
+            width: '90%',
+            maxWidth: '520px',
+            padding: '32px',
+            border: '2px solid #fee2e2',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            textAlign: 'center',
+            gap: '24px'
+          }}>
+            {/* Warning Icon Badge */}
+            <div style={{
+              width: '80px',
+              height: '80px',
+              borderRadius: '50%',
+              backgroundColor: '#fee2e2',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#dc2626'
+            }}>
+              <AlertCircle size={48} />
+            </div>
+
+            <div>
+              <h3 style={{ margin: '0 0 10px 0', fontSize: '22px', fontWeight: 800, color: '#991b1b' }}>
+                {confirmModal.title}
+              </h3>
+              <p style={{ margin: 0, fontSize: '15px', color: '#4b5563', lineHeight: '1.6', fontWeight: 500 }}>
+                {confirmModal.message}
+              </p>
+            </div>
+
+            {/* Warning callout box */}
+            <div style={{
+              backgroundColor: '#fff5f5',
+              borderLeft: '4px solid #dc2626',
+              padding: '12px 16px',
+              borderRadius: '8px',
+              width: '100%',
+              textAlign: 'left'
+            }}>
+              <span style={{ fontSize: '13px', color: '#991b1b', fontWeight: 700, display: 'block', marginBottom: '2px' }}>
+                ⚠️ DİKKAT:
+              </span>
+              <span style={{ fontSize: '12px', color: '#7f1d1d', lineHeight: '1.4' }}>
+                Bu işlem sınıftaki aktif öğrenci çalışmalarını yarıda kesebilir. Devam etmek istediğinizden kesinlikle emin misiniz?
+              </span>
+            </div>
+
+            <div style={{ display: 'flex', width: '100%', gap: '16px', marginTop: '8px' }}>
+              <button
+                onClick={() => {
+                  setConfirmModal(prev => ({ ...prev, isOpen: false }));
+                }}
+                style={{
+                  flex: 1,
+                  padding: '14px 20px',
+                  borderRadius: '12px',
+                  border: '1px solid #d1d5db',
+                  backgroundColor: '#f3f4f6',
+                  color: '#374151',
+                  fontWeight: 700,
+                  fontSize: '14px',
+                  cursor: 'pointer'
+                }}
+              >
+                {confirmModal.cancelText}
+              </button>
+              <button
+                onClick={() => {
+                  setConfirmModal(prev => ({ ...prev, isOpen: false }));
+                  confirmModal.onConfirm();
+                }}
+                style={{
+                  flex: 1,
+                  padding: '14px 20px',
+                  borderRadius: '12px',
+                  border: 'none',
+                  backgroundColor: '#dc2626',
+                  color: '#fff',
+                  fontWeight: 700,
+                  fontSize: '14px',
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 6px -1px rgba(220, 38, 38, 0.4)'
+                }}
+              >
+                {confirmModal.confirmText}
+              </button>
+            </div>
           </div>
         </div>
       )}

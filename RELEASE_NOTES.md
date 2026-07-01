@@ -1,3 +1,18 @@
+# PolyOS Lab v1.6.1 - Sürüm Açıklaması
+
+🎉 **PolyOS Lab v1.6.1**
+
+Bu sürüm; kapatma (shutdown) ve yeniden başlatma (reboot) gibi kritik sistem eylemleri için çift aşamalı (onay pencereli) güvenlik koruması sağlar.
+
+---
+
+## 🚀 Yenilikler ve İyileştirmeler
+
+### 🛡️ Kritik Eylem Koruması (Çift Aşamalı Onay)
+- **Güvenlik Onay Modali (Confirm Modal):** "Tümünü Kapat", "Tümünü Yeniden Başlat" ve tekli bilgisayar kapatma/yeniden başlatma butonlarının tamamına çift aşamalı onay sistemi eklendi. Butona basıldığında büyük, kırmızı uyarılar içeren özel bir React onay penceresi açılır. Kullanıcı onay vermeden komutlar istemcilere gönderilmez.
+
+---
+
 # PolyOS Lab v1.6.0 - Sürüm Açıklaması
 
 🎉 **PolyOS Lab v1.6.0**
