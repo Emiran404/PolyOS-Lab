@@ -7,100 +7,60 @@ let serverProcess = null;
 let serverPort = '8080';
 let serverStatus = 'stopped';
 
-// Compile Go server on launch (only in development)
-function buildGoServer() {
-  if (!isDev) return;
-  try {
-    console.log('Building Go server...');
-    const buildCmd = process.platform === 'win32' ? 'go build -o server_bin.exe main.go' : 'go build -o server_bin main.go';
-    execSync(buildCmd, { cwd: path.join(__dirname, '../server') });
-    console.log('Go server built successfully!');
-  } catch (err) {
-    console.error('Failed to build Go server:', err.message);
-  }
-}
+const net = require('net');
 
-function killProcessOnPort(port) {
-  try {
-    if (process.platform === 'win32') {
-      execSync(`for /f "tokens=5" %a in ('netstat -aon ^| findstr "${port}" ^| findstr /i "listening"') do taskkill /f /pid %a`, { stdio: 'ignore' });
-    } else {
-      execSync(`lsof -t -iTCP:${port} -sTCP:LISTEN | xargs kill -9`, { stdio: 'ignore' });
-    }
-    console.log(`Cleared port ${port}`);
-  } catch (err) {
-    // Port boş veya komut başarısız olduysa yoksay
-  }
+function checkServerStatus(port) {
+  const tester = net.createServer()
+    .once('error', (err) => {
+      if (err.code === 'EADDRINUSE') {
+        if (serverStatus !== 'running') {
+          serverStatus = 'running';
+          sendServerStatus();
+        }
+      } else {
+        if (serverStatus !== 'stopped') {
+          serverStatus = 'stopped';
+          sendServerStatus();
+        }
+      }
+    })
+    .once('listening', () => {
+      tester.once('close', () => {
+        if (serverStatus !== 'stopped') {
+          serverStatus = 'stopped';
+          sendServerStatus();
+        }
+      })
+      .close();
+    })
+    .listen(port);
 }
 
 function startGoServer(port = '8080') {
-  if (serverProcess) {
-    stopGoServer();
-  }
-  
-  killProcessOnPort(port);
-  
   serverPort = port;
-  let binPath;
-  let cwdPath;
-
-  if (isDev) {
-    const binName = process.platform === 'win32' ? 'server_bin.exe' : './server_bin';
-    binPath = binName;
-    cwdPath = path.join(__dirname, '../server');
-  } else {
-    // Production'da extraResources klasöründen çalıştır
-    const binName = process.platform === 'win32' ? 'polyos-server.exe' : 'polyos-server';
-    binPath = path.join(process.resourcesPath, binName);
-    cwdPath = process.resourcesPath;
-  }
-  
-  try {
-    console.log(`Starting Go server from: ${binPath}`);
-    serverProcess = spawn(binPath, ['-port', port, '-token', 'polyos-secure-token'], {
-      cwd: cwdPath,
-      env: { ...process.env, PORT: port }
-    });
-    
-    serverStatus = 'running';
-    console.log(`Go server started on port ${port}`);
-
-    serverProcess.stdout.on('data', (data) => {
-      console.log(`[Go Server] ${data.toString().trim()}`);
-    });
-
-    serverProcess.stderr.on('data', (data) => {
-      console.error(`[Go Server Error] ${data.toString().trim()}`);
-    });
-
-    serverProcess.on('close', (code) => {
-      console.log(`Go server process exited with code ${code}`);
-      serverStatus = 'stopped';
-      serverProcess = null;
-      const windows = BrowserWindow.getAllWindows();
-      if (windows.length > 0) {
-        windows[0].webContents.send('server-status', { status: 'stopped', port: serverPort });
-      }
-    });
-  } catch (err) {
-    console.error('Failed to start Go server process:', err.message);
-    serverStatus = 'stopped';
-  }
+  checkServerStatus(port);
 }
 
 function stopGoServer() {
-  if (serverProcess) {
-    serverProcess.kill();
-    serverProcess = null;
-    serverStatus = 'stopped';
-    console.log('Go server stopped.');
+  // Arka plandaki sistem servisine dokunmuyoruz, sadece statüyü güncelliyoruz
+  serverStatus = 'stopped';
+  sendServerStatus();
+}
+
+function sendServerStatus() {
+  const windows = BrowserWindow.getAllWindows();
+  if (windows.length > 0) {
+    windows[0].webContents.send('server-status', { status: serverStatus, port: serverPort });
   }
 }
 
 function createWindow() {
-  // Build and start Go server automatically
-  buildGoServer();
   startGoServer(serverPort);
+
+  // Arka plandaki sunucunun durumunu periyodik olarak kontrol et
+  setInterval(() => {
+    checkServerStatus(serverPort);
+  }, 2500);
 
   // Enable getDisplayMedia support in Electron
   session.defaultSession.setDisplayMediaRequestHandler((request, callback) => {

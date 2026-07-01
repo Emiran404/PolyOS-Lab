@@ -1,3 +1,19 @@
+# PolyOS Lab v1.6.0 - Sürüm Açıklaması
+
+🎉 **PolyOS Lab v1.6.0**
+
+Bu sürüm; öğretmen paneli sunucusunun (polyos-server) arka planda (systemd servisi/daemon) sürekli açık ve çalışır kalması özelliğini destekler. Uygulama açılışında sunucuyu yeniden derleme/başlatma süreleri devre dışı bırakılmıştır. Ayrıca sunucu kaynak kodları ve sunucu deb paketi yayın akışından kaldırılmıştır.
+
+---
+
+## 🚀 Yenilikler ve İyileştirmeler
+
+### ⚡ Anında Açılış & Arka Plan Sunucu Desteği
+- **Sunucu Spawning Kaldırıldı:** Electron uygulaması açıldığında yerel olarak Go sunucusu derleme ve çalıştırma süreçleri kaldırıldı. Uygulama artık milisaniyeler içinde anında açılır.
+- **Port Sorgulama Modu (Probing):** Uygulama, arka planda çalışan sistem servisini port bazlı TCP ping ile sorgulayarak otomatik olarak bağlanır.
+
+---
+
 # PolyOS Lab v1.5.4 - Sürüm Açıklaması
 
 🎉 **PolyOS Lab v1.5.4**

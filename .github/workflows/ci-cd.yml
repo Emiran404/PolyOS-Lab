@@ -49,29 +49,23 @@ jobs:
           git tag $NEW_TAG
           git push origin $NEW_TAG
 
-      # 1. Set up Go & Build (Client & Server)
+      # 1. Set up Go & Build (Client only)
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
           go-version: '1.20'
           cache-dependency-path: |
-            server/go.sum
             client/go.sum
 
       - name: Run Go Vet & Test
         run: |
-          cd server
-          go vet ./...
-          go test ./...
-          cd ../client
+          cd client
           go vet ./...
           go test ./...
 
       - name: Compile Go Binaries
         run: |
-          cd server
-          GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o polyos-server main.go
-          cd ../client
+          cd client
           GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o polyos-client main.go
 
       # 2. Node.js & Electron/React Build (bundles polyos-server)
@@ -89,27 +83,6 @@ jobs:
           npm run electron:build
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      # 3. Create Server Debian Package (.deb)
-      - name: Package Server into .deb
-        run: |
-          VERSION=${{ env.version_num }}
-          PKG_DIR="polyos-server_${VERSION}_amd64"
-          mkdir -p $PKG_DIR/DEBIAN
-          mkdir -p $PKG_DIR/usr/bin
-          cp server/polyos-server $PKG_DIR/usr/bin/
-          
-          cat <<EOF > $PKG_DIR/DEBIAN/control
-          Package: polyos-server
-          Version: ${VERSION}
-          Section: utils
-          Priority: optional
-          Architecture: amd64
-          Maintainer: Emirhan Gok <emiran404@github.com>
-          Description: PolyOS Lab central management server
-          EOF
-          
-          dpkg-deb --build $PKG_DIR
 
       # 4. Create Client Debian Package (.deb) with Autostart & Systemd Daemon
       - name: Package Client into .deb
@@ -182,7 +155,6 @@ jobs:
           body_path: RELEASE_NOTES.md
           files: |
             dashboard/release/*.deb
-            polyos-server_${{ env.version_num }}_amd64.deb
             polyos-client_${{ env.version_num }}_amd64.deb
             RELEASE_NOTES.md
         env:
