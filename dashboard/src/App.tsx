@@ -5,7 +5,7 @@ import {
   Monitor,
   FolderOpen,
   Settings,
-  LogOut,
+
   Power,
   Lock,
   Unlock,
@@ -17,7 +17,7 @@ import {
   ChevronRight,
   Wifi,
   MonitorUp,
-  HelpCircle,
+
   Image,
   ChevronLeft,  
   Zap,
@@ -1319,10 +1319,7 @@ function App() {
                 <p className="sub-greeting">PolyOS Lab Yönetim Paneli • {new Date().toLocaleDateString('tr-TR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
               </div>
               <div className="header-actions">
-                <button className="btn-secondary">
-                  <HelpCircle size={18} />
-                  Yardım
-                </button>
+
                 {devices && devices.length > 0 && devices.every(device => device.isOnline) ? (
                   <button className="btn-primary" onClick={() => sendToAll('shutdown')} style={{ backgroundColor: '#dc2626' }}>
                     <Power size={18} />
@@ -2750,7 +2747,7 @@ function App() {
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(0,0,0,0.03)', paddingBottom: '6px' }}>
                     <span style={{ color: 'var(--color-text-secondary)' }}>Sürüm (Version):</span>
-                    <span style={{ fontWeight: 600, color: '#3b82f6' }}>v1.5.3</span>
+                    <span style={{ fontWeight: 600, color: '#3b82f6' }}>v1.5.4</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(0,0,0,0.03)', paddingBottom: '6px' }}>
                     <span style={{ color: 'var(--color-text-secondary)' }}>Geliştirici (Developer):</span>
@@ -3239,12 +3236,7 @@ function App() {
           ))}
         </nav>
 
-        <div className="logout-section">
-          <button className="logout-btn">
-            <LogOut size={20} />
-            {sidebarOpen && <span>Çıkış Yap</span>}
-          </button>
-        </div>
+
       </aside>
 
       {/* Main Content */}

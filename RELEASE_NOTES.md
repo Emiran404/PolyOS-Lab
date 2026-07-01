@@ -1,3 +1,19 @@
+# PolyOS Lab v1.5.4 - Sürüm Açıklaması
+
+🎉 **PolyOS Lab v1.5.4**
+
+Bu sürüm; öğretmen paneli arayüzündeki gereksiz "Yardım" ve "Çıkış Yap" düğmelerini kaldırarak daha temiz bir arayüz sunar.
+
+---
+
+## 🚀 Yenilikler ve İyileştirmeler
+
+### 🧹 Arayüz Sadeleştirme
+- **"Yardım" Düğmesi Kaldırıldı:** Ana sayfadaki üst bilgi çubuğunda bulunan ve herhangi bir işlevi olmayan "Yardım" (Help) butonu arayüzden tamamen temizlendi.
+- **"Çıkış Yap" Düğmesi Kaldırıldı:** Sol yan menünün (sidebar) alt kısmındaki "Çıkış Yap" (Log Out) butonu kaldırılarak arayüzün sadeliği artırıldı.
+
+---
+
 # PolyOS Lab v1.5.3 - Sürüm Açıklaması
 
 🎉 **PolyOS Lab v1.5.3**
