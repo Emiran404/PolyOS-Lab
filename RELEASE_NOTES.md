@@ -1,3 +1,19 @@
+# PolyOS Lab v1.6.2 - Sürüm Açıklaması
+
+🎉 **PolyOS Lab v1.6.2**
+
+Bu sürüm; entegre Go sunucusunu (polyos-server) ve arka plan sistem servislerini (systemd/daemon) birleştiren hibrit sunucu başlatma desteği sunar.
+
+---
+
+## 🚀 Yenilikler ve İyileştirmeler
+
+### 🔌 Hibrit Sunucu Başlatma Desteği
+- **Akıllı Port Algılama & Entegre Sunucu Aktivasyonu:** Uygulama açılışında port 8080 (veya belirlenen port) taranır. Eğer arka planda çalışan bir sistem servisi veya daemon varsa, port meşgul olacağından yeni bir süreç başlatılmaz ve doğrudan var olan servis kullanılır. Eğer port boşsa, Electron otomatik olarak yerel entegre Go sunucu sürecini (`spawn`) başlatır. Bu sayede hem servisli hem de servissiz tüm ortamlarda anında çalışır hale gelir.
+- **Entegre Sunucu Dosyası:** pre-compiled Linux amd64 sunucu binary dosyası `dashboard/polyos-server` olarak repoya yerleştirilmiş ve `extraResources` üzerinden deb paketine dahil edilmiştir.
+
+---
+
 # PolyOS Lab v1.6.1 - Sürüm Açıklaması
 
 🎉 **PolyOS Lab v1.6.1**

@@ -36,14 +36,95 @@ function checkServerStatus(port) {
     .listen(port);
 }
 
-function startGoServer(port = '8080') {
+function checkPortFree(port) {
+  return new Promise((resolve) => {
+    const tester = net.createServer()
+      .once('error', (err) => {
+        if (err.code === 'EADDRINUSE') {
+          resolve(false);
+        } else {
+          resolve(true);
+        }
+      })
+      .once('listening', () => {
+        tester.once('close', () => {
+          resolve(true);
+        })
+        .close();
+      })
+      .listen(port);
+  });
+}
+
+async function startGoServer(port = '8080') {
   serverPort = port;
-  checkServerStatus(port);
+  const isFree = await checkPortFree(port);
+  
+  if (!isFree) {
+    console.log(`Port ${port} is already in use. Assuming background daemon is active.`);
+    serverStatus = 'running';
+    sendServerStatus();
+    return;
+  }
+
+  if (serverProcess) {
+    stopGoServer();
+  }
+
+  let binPath;
+  let cwdPath;
+
+  if (isDev) {
+    const binName = process.platform === 'win32' ? 'server_bin.exe' : './server_bin';
+    binPath = binName;
+    cwdPath = path.join(__dirname, '../server');
+  } else {
+    // Production'da extraResources klasöründen çalıştır
+    const binName = process.platform === 'win32' ? 'polyos-server.exe' : 'polyos-server';
+    binPath = path.join(process.resourcesPath, binName);
+    cwdPath = process.resourcesPath;
+  }
+
+  try {
+    console.log(`Starting integrated Go server from: ${binPath}`);
+    serverProcess = spawn(binPath, ['-port', port, '-token', 'polyos-secure-token'], {
+      cwd: cwdPath,
+      env: { ...process.env, PORT: port }
+    });
+
+    serverStatus = 'running';
+    sendServerStatus();
+
+    serverProcess.stdout.on('data', (data) => {
+      console.log(`[Go Server] ${data.toString().trim()}`);
+    });
+
+    serverProcess.stderr.on('data', (data) => {
+      console.error(`[Go Server Error] ${data.toString().trim()}`);
+    });
+
+    serverProcess.on('close', (code) => {
+      console.log(`Go server process exited with code ${code}`);
+      serverStatus = 'stopped';
+      serverProcess = null;
+      sendServerStatus();
+    });
+  } catch (err) {
+    console.error('Failed to start integrated Go server process:', err.message);
+    serverStatus = 'stopped';
+    sendServerStatus();
+  }
 }
 
 function stopGoServer() {
-  // Arka plandaki sistem servisine dokunmuyoruz, sadece statüyü güncelliyoruz
-  serverStatus = 'stopped';
+  if (serverProcess) {
+    serverProcess.kill();
+    serverProcess = null;
+    serverStatus = 'stopped';
+    console.log('Go server stopped.');
+  } else {
+    serverStatus = 'stopped';
+  }
   sendServerStatus();
 }
 
