@@ -149,3 +149,9 @@ Bu sürüm; "Ekran İzleme" (Screen Monitoring) sekmesinde çift tıklama ile uz
 
 Bu sürüm; öğretmen ekranı yansıtırken (screen sharing) oluşan WebSocket bağlantı yetkilendirme sorununu çözer ve öğretmen panelindeki modal arayüzlerde (Mesaj Gönder, Uzaktan Root Terminali) yaşanan odaklanma/yazamama (keyboard focus) problemlerini tamamen giderir.
 
+
+## v1.6.4 (2026-07-02)
+
+### Kritik Hata Düzeltmeleri (Critical Bugfixes)
+* **Sunucu Çökmesi / Bağlantı Kopması Düzeltildi:** Öğretmen ekran paylaştığı esnada (aynı anda saniyede 30 kare veri gönderilirken) diğer komutların (Örn. Kilitle, Mesaj Gönder) gönderilmesi sonucu oluşan "Concurrent Write Panic" (Eşzamanlı yazma hatası) çözüldü. Bu sorun, istemcilerin "Bağlı İstemci Bekleniyor" durumuna düşmesine ve sistemin donmasına neden oluyordu. WebSocket bağlantılarına veri gönderimi artık güvenli bir şekilde `WriteMutex` ile korunuyor.
+* **Modal Yazı Yazamama Sorunu:** "Web Sitesi Aç" kutusuna ("Website Aç") tıklandığında klavyenin algılanmaması / yazı yazılamaması sorunu, Mesaj Gönder kutusunda olduğu gibi `pointerEvents: 'auto'` ve `e.stopPropagation()` kullanılarak düzeltildi.
