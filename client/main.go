@@ -29,7 +29,7 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-const clientVersion = "1.6.4"
+const clientVersion = "1.6.5"
 
 var (
 	captureInterval = 2000 * time.Millisecond
@@ -1202,7 +1202,6 @@ func startScreenShareViewer() {
 	// (prevents 2nd open/close cycle from leaving stale processes)
 	if screenShareCmd != nil {
 		_ = screenShareCmd.Process.Kill()
-		_ = screenShareCmd.Wait()
 		screenShareCmd = nil
 	}
 	// Also kill any lingering viewer processes from previous sessions
@@ -1350,7 +1349,6 @@ func stopScreenShareViewer() {
 
 	if screenShareCmd != nil {
 		_ = screenShareCmd.Process.Kill()
-		_ = screenShareCmd.Wait() // Process zombie'sini temizle
 		screenShareCmd = nil
 	}
 	// Kill all known viewer processes by name/pattern for reliable cleanup

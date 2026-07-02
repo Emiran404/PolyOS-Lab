@@ -8,7 +8,7 @@
 </pre>
 </div>
 
-<p align="center"><strong>Versiyon: 1.6.4</strong> | <strong>Durum: Kararlı</strong></p>
+<p align="center"><strong>Versiyon: 1.6.5</strong> | <strong>Durum: Kararlı</strong></p>
 
 <p align="center">
   <strong>Eğitim kurumları ve bilgisayar laboratuvarları için modern, güvenli ve anlık yönetim ekosistemi.</strong>
@@ -18,7 +18,7 @@
   <a href="https://github.com/Emiran404/PolyOS-Lab/actions/workflows/ci-cd.yml">
     <img src="https://github.com/Emiran404/PolyOS-Lab/actions/workflows/ci-cd.yml/badge.svg" alt="PolyOS Lab CI/CD Build & Release">
   </a>
-  <img src="https://img.shields.io/badge/VERSIYON-1.6.4-blue?style=for-the-badge" alt="Versiyon">
+  <img src="https://img.shields.io/badge/VERSIYON-1.6.5-blue?style=for-the-badge" alt="Versiyon">
   <img src="https://img.shields.io/badge/LISANS-MIT-green?style=for-the-badge" alt="Lisans">
   <img src="https://img.shields.io/badge/PLATFORM-PARDUS-red?style=for-the-badge" alt="Platform">
 </p>

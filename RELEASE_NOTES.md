@@ -1,6 +1,20 @@
-# PolyOS Lab v1.6.3 - Sürüm Açıklaması
+# PolyOS Lab v1.6.5 - Sürüm Açıklaması
 
-🐛 **PolyOS Lab v1.6.3 — Hata Düzeltme Sürümü**
+🐛 **PolyOS Lab v1.6.5 — Kritik İstemci Kararlılık Düzeltmesi**
+
+Bu sürüm, ekran yansıtma açma/kapama işlemleri sırasında öğrenci bilgisayarlarının (client) tamamen donması ve "Bağlı İstemci Bekleniyor" durumuna düşmesi sorununu çözer.
+
+---
+
+## 🔧 Hata Düzeltmeleri
+
+### 1. 🥶 Ekran Yansıtma Sonrası İstemcinin (Client) Donması / Çökmesi
+- **Sorun:** Öğretmen ekran yansıtmayı açtığında veya kapattığında öğrenci bilgisayarları kilitleniyor, VNC akışı donuyor ve yeniden başlatma (reboot) gibi hiçbir komuta yanıt vermiyordu.
+- **Çözüm:** Go İstemcisi içerisindeki süreç yönetim (process monitoring) yapısındaki kritik bir çökme (panic) çözüldü. Ekran yansıtma süreçleri başlatılırken zaten arka planda beklenen süreçlere bir kez daha eşzamanlı olarak `Wait()` çağrısı yapıldığı için Go çalışma zamanı "panic: exec: Wait was already called" hatası verip tüm client servisini öldürüyordu. Çakışan bekleme (`Wait()`) çağrıları koddaki `startScreenShareViewer` ve `stopScreenShareViewer` fonksiyonlarından temizlendi. Artık client işlemleri kapatırken çökmeden, sorunsuz şekilde süreçleri temizleyebiliyor.
+
+---
+
+# PolyOS Lab v1.6.4 - Sürüm Açıklaması
 
 Bu sürüm; ekran yansıtma, duvar kağıdı kilidi, mesaj kutusu ve VNC uyku sorunu gibi 5 kritik hatayı düzeltir.
 
