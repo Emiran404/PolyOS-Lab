@@ -474,7 +474,7 @@ function App() {
       const timer = setTimeout(() => {
         messageInputRef.current?.focus();
         messageInputRef.current?.select();
-      }, 150);
+      }, 200);
       return () => clearTimeout(timer);
     }
   }, [messageModalOpen]);
@@ -994,7 +994,8 @@ function App() {
       if (response.ok) {
         const data = await response.json();
         setWallpaperPath(data.wallpaper);
-        alert("Yeni duvar kağıdı yüklendi ve tüm istemcilere uygulandı.");
+        setWallpaperLocked(true); // Server otomatik kilitledi
+        alert("Yeni duvar kağıdı yüklendi ve tüm istemcilere otomatik uygulandı.");
       } else {
         alert("Resim yüklenemedi.");
       }
@@ -2811,7 +2812,7 @@ function App() {
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(0,0,0,0.03)', paddingBottom: '6px' }}>
                     <span style={{ color: 'var(--color-text-secondary)' }}>Sürüm (Version):</span>
-                    <span style={{ fontWeight: 600, color: '#3b82f6' }}>v1.6.1</span>
+                    <span style={{ fontWeight: 600, color: '#3b82f6' }}>v1.6.3</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(0,0,0,0.03)', paddingBottom: '6px' }}>
                     <span style={{ color: 'var(--color-text-secondary)' }}>Geliştirici (Developer):</span>
@@ -3685,31 +3686,38 @@ function App() {
 
       {/* Mesaj Gönder Modal */}
       {messageModalOpen && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          width: '100vw',
-          height: '100vh',
-          backgroundColor: 'rgba(15, 23, 42, 0.75)',
-          backdropFilter: 'blur(8px)',
-          zIndex: 99999,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center'
-        }}>
-          <div style={{
-            backgroundColor: '#fff',
-            borderRadius: '16px',
-            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
-            width: '100%',
-            maxWidth: '450px',
-            padding: '24px',
-            border: '1px solid var(--color-border)',
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100vw',
+            height: '100vh',
+            backgroundColor: 'rgba(15, 23, 42, 0.75)',
+            backdropFilter: 'blur(8px)',
+            zIndex: 99999,
             display: 'flex',
-            flexDirection: 'column',
-            gap: '16px'
-          }}>
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+          onMouseDown={(e) => { if (e.target === e.currentTarget) { setMessageModalOpen(false); setMessageText(''); } }}
+        >
+          <div
+            style={{
+              backgroundColor: '#fff',
+              borderRadius: '16px',
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+              width: '100%',
+              maxWidth: '450px',
+              padding: '24px',
+              border: '1px solid var(--color-border)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '16px'
+            }}
+            onMouseDown={(e) => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
+          >
             <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: '#0f172a' }}>Öğrencilere Mesaj Gönder</h3>
             <p style={{ margin: 0, fontSize: '13px', color: '#64748b' }}>Seçili öğrencilerin ekranlarında gösterilecek olan mesajı yazın:</p>
             <input 
@@ -3725,10 +3733,15 @@ function App() {
                 border: '1px solid var(--color-border)',
                 fontSize: '14px',
                 outline: 'none',
-                boxSizing: 'border-box'
+                boxSizing: 'border-box',
+                cursor: 'text',
+                pointerEvents: 'auto'
               }}
               autoFocus
+              onMouseDown={(e) => e.stopPropagation()}
+              onClick={(e) => { e.stopPropagation(); (e.target as HTMLInputElement).focus(); }}
               onKeyDown={(e) => {
+                e.stopPropagation();
                 if (e.key === 'Enter') {
                   handleSendMessageSubmit(messageText);
                   setMessageModalOpen(false);

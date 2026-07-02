@@ -1,3 +1,39 @@
+# PolyOS Lab v1.6.3 - Sürüm Açıklaması
+
+🐛 **PolyOS Lab v1.6.3 — Hata Düzeltme Sürümü**
+
+Bu sürüm; ekran yansıtma, duvar kağıdı kilidi, mesaj kutusu ve VNC uyku sorunu gibi 5 kritik hatayı düzeltir.
+
+---
+
+## 🔧 Hata Düzeltmeleri
+
+### 1. 📺 Ekran Yansıtma Tam Ekran Sorunu (BUG-01)
+- **Sorun:** `/share` sayfasındaki yayın ekranı tarayıcıda küçük kalıyor, tüm ekranı doldurmuyordu.
+- **Çözüm:** `#screen` elementi `width:100vw; height:100vh; object-fit:contain` ile tam ekranı kaplayacak şekilde güncellendi. Sayfa ayrıca Fullscreen API'si ile otomatik tam ekranda açılmaya çalışır (`requestFullscreen`).
+
+### 2. 🖼️ Duvar Kağıdı Kilidi Otomatik Uygulanmıyor (BUG-02)
+- **Sorun:** Duvar kağıdı yüklendiğinde istemcilerde otomatik değişmiyordu.
+- **Çözüm:** Server tarafında `/api/wallpaper/upload` işlevi güncellendi — yeni resim yüklendiğinde `wallpaperLocked` otomatik olarak `true` yapılır ve anında tüm istemcilere `broadcastWallpaperState()` gönderilir. Öğretmen paneli UI'ı da kilit durumunu otomatik günceller.
+
+### 3. 💬 Mesaj Kutusu'na Yazı Yazılamıyor (BUG-03)
+- **Sorun:** Hızlı işlemler > Mesaj Gönder butonuna tıklandığında açılan modaldaki metin kutusuna yazı yazılamıyordu.
+- **Çözüm:** Modal'ın arka planı `onMouseDown` ile odak çalma olayını engeller. Modal kartı `onMouseDown` ve `onClick` event'lerini `stopPropagation()` ile durdurur. Input'a ek olarak `e.stopPropagation()` ve `(e.target as HTMLInputElement).focus()` eklendi.
+
+### 4. 💤 Bilgisayar Uyku Moduna Geçiyor → VNC Kesiliyordu (BUG-04)
+- **Sorun:** İstemci bilgisayar uyku/bekleme moduna geçtiğinde VNC bağlantısı kopuyordu.
+- **Çözüm:** Client'a `startSleepInhibitor()` fonksiyonu eklendi. Bu fonksiyon:
+  - `xset s off` + `xset s noblank` + `xset -dpms` komutlarıyla X11 ekran koruyucusu ve DPMS (güç tasarruf modu) devre dışı bırakılır.
+  - Her 60 saniyede bir tekrar uygulanarak sistem tarafından yeniden etkinleştirilmesi engellenir.
+  - `systemd-inhibit --what=sleep:idle:handle-lid-switch` ile logind tabanlı uyku engeli de eklenir.
+  - Başlangıçta otomatik çağrılır (`main()` fonksiyonundan).
+
+### 5. 🔁 Ekran Yansıtmayı 2. Kez Kapatınca Öğrencilerde Kapanmıyordu (BUG-05)
+- **Sorun:** Ekran yansıt açıp kapatıldıktan sonra 2. defa açılıp kapatıldığında öğrenci ekranlarındaki Python/tarayıcı viewer pencereleri kapanmıyordu.
+- **Çözüm:** `startScreenShareViewer()` artık başlamadan önce her zaman mevcut process'i öldürür (eski erken `return` kaldırıldı). `stopScreenShareViewer()` güçlendirildi: `cmd.Wait()` ile zombie process temizlenir, `pkill -f polyos_share_viewer.py`, `pkill -f firefox.*polyos_share_firefox`, `pkill -f chromium.*polyos_share_chrome` pattern-bazlı komutlarla kalan tüm izler temizlenir.
+
+---
+
 # PolyOS Lab v1.6.2 - Sürüm Açıklaması
 
 🎉 **PolyOS Lab v1.6.2**

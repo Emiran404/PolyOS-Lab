@@ -29,7 +29,7 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-const clientVersion = "1.6.2"
+const clientVersion = "1.6.3"
 
 var (
 	captureInterval = 2000 * time.Millisecond
@@ -1198,9 +1198,17 @@ func startScreenShareViewer() {
 	screenShareMutex.Lock()
 	defer screenShareMutex.Unlock()
 
+	// Bug fix: Kill any existing viewer before starting new one
+	// (prevents 2nd open/close cycle from leaving stale processes)
 	if screenShareCmd != nil {
-		return // Zaten açık
+		_ = screenShareCmd.Process.Kill()
+		_ = screenShareCmd.Wait()
+		screenShareCmd = nil
 	}
+	// Also kill any lingering viewer processes from previous sessions
+	_ = exec.Command("pkill", "-f", "polyos_share_viewer.py").Run()
+	_ = exec.Command("pkill", "-f", "firefox.*polyos_share_firefox").Run()
+	_ = exec.Command("pkill", "-f", "chromium.*polyos_share_chrome").Run()
 
 	shareURL := getShareURL()
 
@@ -1342,13 +1350,19 @@ func stopScreenShareViewer() {
 
 	if screenShareCmd != nil {
 		_ = screenShareCmd.Process.Kill()
+		_ = screenShareCmd.Wait() // Process zombie'sini temizle
 		screenShareCmd = nil
 	}
+	// Kill all known viewer processes by name/pattern for reliable cleanup
+	_ = exec.Command("pkill", "-f", "polyos_share_viewer.py").Run()
+	_ = exec.Command("pkill", "-f", "firefox.*polyos_share_firefox").Run()
+	_ = exec.Command("pkill", "-f", "chromium.*polyos_share_chrome").Run()
 	killProcessByName("firefox")
 	killProcessByName("chromium-browser")
 	killProcessByName("chromium")
 	killProcessByName("chrome")
 	_ = os.Remove(filepath.Join(os.TempDir(), "polyos_share_viewer.py"))
+	log.Println("[ScreenShare] Yansıtıcı tamamen durduruldu ve temizlendi.")
 }
 
 func convertJpegBase64ToPngBase64(jpegB64 string) (string, error) {
@@ -1651,6 +1665,9 @@ func main() {
 
 	// Duvar kağıdı kilit izleyicisini başlat
 	startWallpaperLockMonitor()
+
+	// Uyku modunu engelle (VNC bağlantısının kesilmemesi için)
+	startSleepInhibitor()
 
 	shareTechMutex.RLock()
 	initTech := shareTechnology
@@ -2177,6 +2194,69 @@ func setWallpaperLinux(path string) {
 			_ = reloadCmd.Run()
 		}
 	}
+}
+
+// startSleepInhibitor disables X screensaver and DPMS to prevent the computer
+// from going to sleep while the PolyOS client is running (Bug 4: VNC disconnect on sleep).
+func startSleepInhibitor() {
+	userStr := getLoggedInGUIUser()
+	xauth := getXAuthorityPath(userStr)
+
+	runAsGUI := func(args ...string) {
+		cmd := exec.Command(args[0], args[1:]...)
+		env := append(os.Environ(), "DISPLAY=:0")
+		if xauth != "" {
+			env = append(env, "XAUTHORITY="+xauth)
+		}
+		if userStr != "" && userStr != "root" {
+			if u, err := user.Lookup(userStr); err == nil {
+				uid, _ := strconv.ParseUint(u.Uid, 10, 32)
+				gid, _ := strconv.ParseUint(u.Gid, 10, 32)
+				env = append(env, fmt.Sprintf("DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/%d/bus", uid))
+				cmd.SysProcAttr = &syscall.SysProcAttr{
+					Credential: &syscall.Credential{
+						Uid: uint32(uid),
+						Gid: uint32(gid),
+					},
+				}
+			}
+		}
+		cmd.Env = env
+		_ = cmd.Run()
+	}
+
+	// Disable X11 screensaver and DPMS (prevents monitor sleep / screen lock)
+	runAsGUI("xset", "s", "off")           // turn off screensaver
+	runAsGUI("xset", "s", "noblank")       // prevent blanking
+	runAsGUI("xset", "-dpms")              // disable DPMS energy saving
+	log.Println("[SleepInhibitor] X11 screensaver ve DPMS devre dışı bırakıldı.")
+
+	// Periodically refresh to combat system settings that re-enable screensaver
+	go func() {
+		for {
+			time.Sleep(60 * time.Second)
+			runAsGUI("xset", "s", "off")
+			runAsGUI("xset", "s", "noblank")
+			runAsGUI("xset", "-dpms")
+		}
+	}()
+
+	// Also try systemd-inhibit for logind-based sleep prevention
+	go func() {
+		cmd := exec.Command("systemd-inhibit",
+			"--what=sleep:idle:handle-lid-switch",
+			"--who=PolyOS Lab",
+			"--why=Sınıf yönetimi aktif",
+			"--mode=block",
+			"sleep", "infinity",
+		)
+		if err := cmd.Start(); err != nil {
+			log.Printf("[SleepInhibitor] systemd-inhibit başlatılamadı (bu normal olabilir): %v\n", err)
+			return
+		}
+		log.Println("[SleepInhibitor] systemd-inhibit ile uyku engellendi.")
+		_ = cmd.Wait()
+	}()
 }
 
 func startWallpaperLockMonitor() {
