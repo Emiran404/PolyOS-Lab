@@ -29,7 +29,7 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-const clientVersion = "1.6.5"
+const clientVersion = "1.6.6"
 
 var (
 	captureInterval = 2000 * time.Millisecond
@@ -1081,20 +1081,53 @@ func setInputsEnabled(enabled bool) {
 func blockUSBDevices(block bool) error {
 	confPath := "/etc/modprobe.d/block_usb.conf"
 	if block {
-		content := "blacklist usb-storage\nblacklist uas\n"
+		// En güçlü engelleme yöntemi: modül yüklenmek istendiğinde /bin/true (boş başarılı komut) çalıştırır.
+		content := "install usb-storage /bin/true\ninstall uas /bin/true\n"
 		err := os.WriteFile(confPath, []byte(content), 0644)
 		if err != nil {
+			// Eğer direkt yetki yoksa pkexec ile dener
 			tmpFile := os.TempDir() + "/block_usb_temp"
 			_ = os.WriteFile(tmpFile, []byte(content), 0644)
 			_ = exec.Command("pkexec", "cp", tmpFile, confPath).Run()
 			_ = os.Remove(tmpFile)
 		}
-		_ = exec.Command("pkexec", "modprobe", "-r", "usb-storage", "uas").Run()
+
+		// 1. Zaten takılı olan tüm USB depolama birimlerini yazılımsal olarak anında sistemden kopar (unbind)
+		// Bu sayede kullanımda olsalar bile bağlantıları kesilir. (Klavye fare usbhid kullandığı için etkilenmez)
+		unbindScript := `
+for device in /sys/bus/usb/drivers/usb-storage/*; do
+    if [ -e "$device" ] && [ -d "$device" ]; then
+        echo "$(basename $device)" > /sys/bus/usb/drivers/usb-storage/unbind 2>/dev/null
+    fi
+done
+for device in /sys/bus/usb/drivers/uas/*; do
+    if [ -e "$device" ] && [ -d "$device" ]; then
+        echo "$(basename $device)" > /sys/bus/usb/drivers/uas/unbind 2>/dev/null
+    fi
+done
+`
+		_ = exec.Command("sh", "-c", unbindScript).Run()
+		_ = exec.Command("pkexec", "sh", "-c", unbindScript).Run() // Root değilse diye pkexec dener
+
+		// 2. Takılı ve mount edilmiş aygıtları dosya sisteminden zorla çıkar
+		_ = exec.Command("sh", "-c", "umount -l /media/*/* 2>/dev/null").Run()
+		_ = exec.Command("pkexec", "sh", "-c", "umount -l /media/*/* 2>/dev/null").Run()
+
+		// 3. Modülleri çekirdekten kaldır
 		_ = exec.Command("modprobe", "-r", "usb-storage", "uas").Run()
+		_ = exec.Command("pkexec", "modprobe", "-r", "usb-storage", "uas").Run()
+
+		log.Println("[USB] USB Depolama aygıtları başarıyla engellendi (Klavye/Fare hariç).")
 	} else {
 		_ = os.Remove(confPath)
-		_ = exec.Command("pkexec", "modprobe", "usb-storage", "uas").Run()
-		_ = exec.Command("modprobe", "usb-storage", "uas").Run()
+		_ = exec.Command("pkexec", "rm", "-f", confPath).Run()
+		
+		_ = exec.Command("modprobe", "usb-storage").Run()
+		_ = exec.Command("modprobe", "uas").Run()
+		_ = exec.Command("pkexec", "modprobe", "usb-storage").Run()
+		_ = exec.Command("pkexec", "modprobe", "uas").Run()
+		
+		log.Println("[USB] USB Depolama aygıtlarının engeli kaldırıldı.")
 	}
 	return nil
 }
